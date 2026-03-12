@@ -132,6 +132,7 @@ export function SignInForm() {
                 variant="ghost"
                 size="icon-xs"
                 className="ml-2"
+                tabIndex={-1}
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -165,6 +166,7 @@ export function SignInForm() {
           <Link
             href="/forgot-password"
             className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            tabIndex={2}
           >
             Forgot password?
           </Link>
@@ -183,6 +185,7 @@ export function SignInForm() {
         <Link
           href="/sign-up"
           className="font-medium text-foreground underline-offset-4 hover:underline"
+          tabIndex={2}
         >
           Create one
         </Link>

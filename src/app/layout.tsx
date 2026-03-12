@@ -3,6 +3,7 @@ import { Geist_Mono, Raleway } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils";
+import { Metadata } from "next";
 
 const raleway = Raleway({subsets:['latin'],variable:'--font-sans'})
 
@@ -10,6 +11,18 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+export const metadata: Metadata = {
+  title: "Certfolio",
+  description:
+    "A place to showcase your certifications and projects. Think link-in-bio but for your professional achievements.",
+  authors: [
+    {
+      name: "Marius Bobitiu",
+      url: "https://mariusbobitiu.dev",
+    },
+  ],
+}
 
 export default async function RootLayout({
   children,

@@ -1,8 +1,24 @@
 import { ShieldCheck } from "lucide-react";
 
 import { SignInForm } from "./sign-in-form";
+import { cookies } from "next/headers";
+import { SESSION_COOKIE_NAME, validateSessionToken } from "@/lib/auth/session-core";
+import { redirect } from "next/navigation";
 
-export default function SignInPage() {
+export default async function SignInPage() {
+	const sessionCookie = await (await cookies()).get(SESSION_COOKIE_NAME);
+
+	if (sessionCookie?.value) {
+		const session = await validateSessionToken(sessionCookie.value);
+
+		if (session) {
+			// If the user is already authenticated, you can choose to redirect them to the dashboard
+
+			return redirect('/dashboard')
+		};
+	};
+	// Otherwise, render the sign-in page
+
 	return (
 		<div className="space-y-6">
 			<div className="space-y-2 text-center">

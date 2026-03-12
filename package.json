@@ -10,7 +10,10 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "seed": "DOTENV_CONFIG_PATH=.env.local tsx src/lib/db/seed.ts"
+    "db:generate": "DOTENV_CONFIG_PATH=.env.local drizzle-kit generate",
+    "db:migrate": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/lib/db/migrate.ts",
+    "db:seed": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/lib/db/seed.ts",
+    "seed": "pnpm db:seed"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
