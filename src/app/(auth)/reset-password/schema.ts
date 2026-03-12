@@ -1,10 +1,8 @@
 import * as z from "zod/v4"
 import { validatePassword } from "@/lib/auth/password-validation"
 
-export const signUpSchema = z
+export const resetPasswordSchema = z
   .object({
-    name: z.string().trim().min(2, "Name must be at least 2 characters"),
-    email: z.email("Please enter a valid email"),
     password: z
       .string()
       .min(1, "Password is required")
@@ -18,12 +16,11 @@ export const signUpSchema = z
         }
       }),
     confirmPassword: z.string().min(1, "Please confirm your password"),
-    rememberMe: z.boolean(),
   })
   .refine((values) => values.password === values.confirmPassword, {
     path: ["confirmPassword"],
     message: "Passwords do not match",
   })
 
-export type SignUpInput = z.input<typeof signUpSchema>
-export type SignUpOutput = z.output<typeof signUpSchema>
+export type ResetPasswordInput = z.input<typeof resetPasswordSchema>
+export type ResetPasswordOutput = z.output<typeof resetPasswordSchema>
