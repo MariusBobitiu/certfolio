@@ -19,7 +19,7 @@ export function EmailVerificationBanner() {
       : null)
 
   return (
-    <section className="mb-6 rounded-xl border border-amber-300/60 bg-amber-100/70 p-4 text-amber-950 shadow-sm backdrop-blur dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+    <section className="mx-auto max-w-7xl rounded-xl border border-amber-300/60 bg-amber-100/70 p-4 text-amber-950 shadow-sm backdrop-blur dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <p className="flex items-center gap-2 text-sm font-semibold">
