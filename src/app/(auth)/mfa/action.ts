@@ -4,10 +4,12 @@ import { redirect } from "next/navigation"
 import { actionClient } from "@/lib/safe-action"
 import {
   clearPendingMfaCookie,
+  consumeRecoveryCodeMfaChallenge,
   getPendingMfaCookie,
   issueEmailMfaChallenge,
   setPendingMfaCookie,
   verifyEmailMfaChallenge,
+  verifyTotpMfaChallenge,
 } from "@/lib/auth/mfa"
 import { createSession, setSessionCookie } from "@/lib/auth/session"
 import { db, UsersTable, VerificationsTable } from "@/lib/db/drizzle"
@@ -19,17 +21,30 @@ export const verifyMfaCodeAction = actionClient
   .action(async ({ parsedInput }) => {
     const pendingMfa = await getPendingMfaCookie()
 
-    if (!pendingMfa || pendingMfa.method !== "email") {
+    if (!pendingMfa) {
       return {
         failure: "Your verification session has expired. Sign in again.",
       }
     }
 
-    const result = await verifyEmailMfaChallenge({
-      verificationId: pendingMfa.verificationId,
-      userId: pendingMfa.userId,
-      code: parsedInput.code,
-    })
+    const result =
+      pendingMfa.method === "email"
+        ? await verifyEmailMfaChallenge({
+            verificationId: pendingMfa.verificationId,
+            userId: pendingMfa.userId,
+            code: parsedInput.code,
+          })
+        : parsedInput.codeType === "recovery"
+          ? await consumeRecoveryCodeMfaChallenge({
+              verificationId: pendingMfa.verificationId,
+              userId: pendingMfa.userId,
+              code: parsedInput.code,
+            })
+          : await verifyTotpMfaChallenge({
+              verificationId: pendingMfa.verificationId,
+              userId: pendingMfa.userId,
+              code: parsedInput.code,
+            })
 
     if (!result.success) {
       return { failure: result.failure }

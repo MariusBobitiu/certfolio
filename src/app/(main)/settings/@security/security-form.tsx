@@ -1,12 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useAction } from "next-safe-action/hooks"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Eye, EyeOff, Lock, ShieldCheck, KeyRound } from "lucide-react"
+import QRCode from "qrcode"
+import {
+  CheckCircle2,
+  Copy,
+  Download,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Lock,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -33,13 +44,22 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 
 import {
+  beginTotpEnrollmentAction,
   changePasswordAction,
+  confirmTotpEnrollmentAction,
   disableEmailMfaAction,
+  disableTotpMfaAction,
   enableEmailMfaAction,
+  regenerateRecoveryCodesAction,
   revokeSessionAction,
   revokeAllOtherSessionsAction,
 } from "./action"
-import { changePasswordSchema, type ChangePasswordInput } from "./schema"
+import {
+  changePasswordSchema,
+  totpCodeSchema,
+  type ChangePasswordInput,
+  type TotpCodeInput,
+} from "./schema"
 
 function ChangePasswordDialog() {
   const [open, setOpen] = useState(false)
@@ -186,11 +206,75 @@ function MfaCard({
 }) {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"email" | "totp">("email")
+  const [totpSetup, setTotpSetup] = useState<{
+    secret: string
+    otpauthUrl: string
+    issuer: string
+    accountName: string
+  } | null>(null)
+  const [totpQrDataUrl, setTotpQrDataUrl] = useState<string | null>(null)
+  const [totpStep, setTotpStep] = useState<"scan" | "verify" | "recovery">(
+    "scan"
+  )
+  const [totpSecretCopied, setTotpSecretCopied] = useState(false)
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([])
+  const [recoveryCodesCopied, setRecoveryCodesCopied] = useState(false)
   const router = useRouter()
   const enableEmailMfa = useAction(enableEmailMfaAction)
   const disableEmailMfa = useAction(disableEmailMfaAction)
+  const beginTotpEnrollment = useAction(beginTotpEnrollmentAction)
+  const confirmTotpEnrollment = useAction(confirmTotpEnrollmentAction)
+  const disableTotpMfa = useAction(disableTotpMfaAction)
+  const {
+    register: registerTotpCode,
+    handleSubmit: handleTotpSubmit,
+    setError: setTotpError,
+    clearErrors: clearTotpErrors,
+    reset: resetTotpForm,
+    formState: { errors: totpErrors },
+  } = useForm<TotpCodeInput>({
+    resolver: standardSchemaResolver(totpCodeSchema),
+    defaultValues: { code: "" },
+  })
 
   const mfaEnabled = emailEnabled || totpEnabled
+
+  useEffect(() => {
+    let active = true
+
+    async function generateQrCode() {
+      if (!totpSetup?.otpauthUrl) {
+        setTotpQrDataUrl(null)
+        return
+      }
+
+      try {
+        const dataUrl = await QRCode.toDataURL(totpSetup.otpauthUrl, {
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: 224,
+          color: {
+            dark: "#0a0a0b",
+            light: "#ffffff",
+          },
+        })
+
+        if (active) {
+          setTotpQrDataUrl(dataUrl)
+        }
+      } catch {
+        if (active) {
+          setTotpQrDataUrl(null)
+        }
+      }
+    }
+
+    generateQrCode()
+
+    return () => {
+      active = false
+    }
+  }, [totpSetup])
 
   const handleEnableEmail = async () => {
     const res = await enableEmailMfa.executeAsync()
@@ -218,8 +302,174 @@ function MfaCard({
     toast.error(res?.data?.failure ?? "Unable to disable email MFA")
   }
 
+  const handleBeginTotpEnrollment = async () => {
+    const res = await beginTotpEnrollment.executeAsync()
+
+    if (res?.data?.failure) {
+      toast.error(res.data.failure)
+      return
+    }
+
+    if (res?.data?.secret && res.data.otpauthUrl) {
+      setTotpSetup({
+        secret: res.data.secret,
+        otpauthUrl: res.data.otpauthUrl,
+        issuer: res.data.issuer,
+        accountName: res.data.accountName,
+      })
+      setTotpStep("scan")
+      resetTotpForm()
+      clearTotpErrors()
+      toast.success(res.data.success ?? "Authenticator app setup started")
+      return
+    }
+
+    toast.error("Unable to start authenticator app setup")
+  }
+
+  const handleConfirmTotpEnrollment = async (values: TotpCodeInput) => {
+    clearTotpErrors()
+
+    const res = await confirmTotpEnrollment.executeAsync(values)
+
+    if (res?.data?.failure) {
+      setTotpError("root", { message: res.data.failure })
+      return
+    }
+
+    if (res?.data?.success) {
+      toast.success(res.data.success)
+      setNewRecoveryCodes(res.data.recoveryCodes ?? [])
+      setTotpStep("recovery")
+      resetTotpForm()
+      return
+    }
+
+    setTotpError("root", { message: "Unable to verify authenticator code" })
+  }
+
+  const handleDisableTotp = async () => {
+    const res = await disableTotpMfa.executeAsync()
+
+    if (res?.data?.success) {
+      toast.success(res.data.success)
+      setTotpSetup(null)
+      setTotpQrDataUrl(null)
+      setTotpStep("scan")
+      resetTotpForm()
+      setOpen(false)
+      router.refresh()
+      return
+    }
+
+    toast.error(res?.data?.failure ?? "Unable to disable authenticator MFA")
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+
+    if (nextOpen) {
+      return
+    }
+
+    setTotpSetup(null)
+    setTotpQrDataUrl(null)
+    setTotpStep("scan")
+    setTotpSecretCopied(false)
+    setNewRecoveryCodes([])
+    setRecoveryCodesCopied(false)
+    resetTotpForm()
+    clearTotpErrors()
+  }
+
+  const handleCopyTotpSecret = async () => {
+    if (!totpSetup?.secret) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(totpSetup.secret)
+      setTotpSecretCopied(true)
+    } catch {
+      toast.error("Unable to copy setup key")
+    }
+  }
+
+  useEffect(() => {
+    if (!totpSecretCopied) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setTotpSecretCopied(false)
+    }, 1500)
+
+    return () => window.clearTimeout(timeout)
+  }, [totpSecretCopied])
+
+  useEffect(() => {
+    if (!recoveryCodesCopied) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setRecoveryCodesCopied(false)
+    }, 1500)
+
+    return () => window.clearTimeout(timeout)
+  }, [recoveryCodesCopied])
+
+  const handleCopyRecoveryCodes = async () => {
+    if (newRecoveryCodes.length === 0) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(newRecoveryCodes.join("\n"))
+      setRecoveryCodesCopied(true)
+    } catch {
+      toast.error("Unable to copy recovery codes")
+    }
+  }
+
+  const handleDownloadRecoveryCodes = () => {
+    if (newRecoveryCodes.length === 0) {
+      return
+    }
+
+    const content = [
+      "Certfolio recovery codes",
+      "",
+      "Store these codes somewhere safe. Each code can be used once.",
+      "",
+      ...newRecoveryCodes,
+      "",
+      `Generated: ${new Date().toISOString()}`,
+    ].join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+
+    link.href = url
+    link.download = "certfolio-recovery-codes.txt"
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleFinishRecoveryCodes = () => {
+    setTotpSetup(null)
+    setTotpQrDataUrl(null)
+    setTotpStep("scan")
+    setTotpSecretCopied(false)
+    setNewRecoveryCodes([])
+    setRecoveryCodesCopied(false)
+    resetTotpForm()
+    setOpen(false)
+    router.refresh()
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div className="flex items-center gap-3">
           <ShieldCheck className="size-5 text-muted-foreground" />
@@ -236,12 +486,12 @@ function MfaCard({
           </Button>
         </DialogTrigger>
       </div>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Two-Factor Authentication</DialogTitle>
           <DialogDescription>
-            Add a second step to sign-in. Email OTP is live; authenticator app
-            support stays visible here as the next method.
+            Add a second step to sign-in with either email or an authenticator
+            app.
           </DialogDescription>
         </DialogHeader>
 
@@ -315,14 +565,212 @@ function MfaCard({
               <div className="space-y-1">
                 <p className="text-sm font-medium">Authenticator app</p>
                 <p className="text-sm text-muted-foreground">
-                  TOTP setup and verification will land here next.
+                  Use any TOTP app to generate 6-digit codes for sign-in.
                 </p>
               </div>
 
-              <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
-                The tab stays in place so the enrollment dialog structure
-                doesn&apos;t need to change once TOTP is wired up.
-              </div>
+              {totpEnabled ? (
+                <>
+                  <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+                    Authenticator app MFA is active for this account.
+                  </div>
+
+                  <DialogFooter className="sm:justify-start">
+                    <Button
+                      variant="destructive"
+                      onClick={handleDisableTotp}
+                      disabled={disableTotpMfa.isPending}
+                    >
+                      {disableTotpMfa.isPending && (
+                        <Spinner className="size-4" />
+                      )}
+                      Disable authenticator MFA
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <>
+                  {totpStep === "recovery" ? (
+                    <div className="space-y-4">
+                      <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+                        Save these recovery codes somewhere safe. Each code can
+                        be used once if you lose access to your authenticator
+                        app.
+                      </div>
+
+                      <div className="rounded-lg bg-muted/20 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <p className="text-sm font-medium">Recovery codes</p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              aria-label="Download recovery codes"
+                              className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                              onClick={handleDownloadRecoveryCodes}
+                            >
+                              <Download className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Copy recovery codes"
+                              className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                              onClick={handleCopyRecoveryCodes}
+                            >
+                              {recoveryCodesCopied ? (
+                                <CheckCircle2 className="size-4 text-emerald-400" />
+                              ) : (
+                                <Copy className="size-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {newRecoveryCodes.map((code) => (
+                            <div
+                              key={code}
+                              className="rounded-md bg-background px-3 py-2 font-mono text-sm"
+                            >
+                              {code}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <DialogFooter className="sm:justify-start">
+                        <Button type="button" onClick={handleFinishRecoveryCodes}>
+                          Done
+                        </Button>
+                      </DialogFooter>
+                    </div>
+                  ) : totpSetup ? (
+                    <div className="space-y-4">
+                      <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+                        {totpStep === "scan"
+                          ? "Scan the QR code with your authenticator app, or use the setup key if scanning is unavailable."
+                          : "Enter the current 6-digit code from your authenticator app to finish setup."}
+                      </div>
+
+                      {totpStep === "scan" ? (
+                        <div className="space-y-4">
+                          <div className="mx-auto w-full max-w-52 rounded-2xl bg-white p-3 shadow-sm">
+                            <div className="flex aspect-square items-center justify-center rounded-xl bg-white">
+                              {totpQrDataUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={totpQrDataUrl}
+                                  alt="TOTP enrollment QR code"
+                                  className="h-full w-full rounded-lg object-contain"
+                                />
+                              ) : (
+                                <div className="px-4 text-center text-xs text-slate-500">
+                                  Generating QR code...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg bg-muted/20 p-4">
+                            <p className="text-xs text-muted-foreground">
+                              Can&apos;t scan? Use this setup key instead.
+                            </p>
+                            <div className="mt-2 flex items-start justify-between gap-3">
+                              <p className="font-mono text-sm break-all text-foreground">
+                                {totpSetup.secret}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label="Copy setup key"
+                                className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                                onClick={handleCopyTotpSecret}
+                              >
+                                {totpSecretCopied ? (
+                                  <CheckCircle2 className="size-4 text-emerald-400" />
+                                ) : (
+                                  <Copy className="size-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-start">
+                            <Button
+                              type="button"
+                              onClick={() => setTotpStep("verify")}
+                            >
+                              Continue
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <form
+                          onSubmit={handleTotpSubmit(
+                            handleConfirmTotpEnrollment
+                          )}
+                          className="space-y-4"
+                        >
+                          <FieldGroup>
+                            <Field data-invalid={Boolean(totpErrors.code)}>
+                              <FieldLabel htmlFor="totpCode">
+                                Authenticator code
+                              </FieldLabel>
+                              <Input
+                                id="totpCode"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                maxLength={6}
+                                placeholder="123456"
+                                disabled={confirmTotpEnrollment.isPending}
+                                {...registerTotpCode("code")}
+                              />
+                              <FieldError errors={[totpErrors.code]} />
+                            </Field>
+                          </FieldGroup>
+
+                          <FieldError errors={[totpErrors.root]} />
+
+                          <div className="flex flex-wrap gap-3">
+                            <Button
+                              type="submit"
+                              disabled={confirmTotpEnrollment.isPending}
+                            >
+                              {confirmTotpEnrollment.isPending && (
+                                <Spinner className="size-4" />
+                              )}
+                              Verify and enable
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setTotpStep("scan")}
+                            >
+                              Back
+                            </Button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+                        Set up an authenticator app to generate a 6-digit code
+                        when you sign in.
+                      </div>
+
+                      <DialogFooter className="sm:justify-start">
+                        <Button
+                          onClick={handleBeginTotpEnrollment}
+                          disabled={beginTotpEnrollment.isPending}
+                        >
+                          {beginTotpEnrollment.isPending && (
+                            <Spinner className="size-4" />
+                          )}
+                          Set up authenticator app
+                        </Button>
+                      </DialogFooter>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -331,27 +779,208 @@ function MfaCard({
   )
 }
 
-function RecoveryCodesCard() {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="pointer-events-none flex items-center justify-between rounded-lg border p-4 opacity-50">
-          <div className="flex items-center gap-3">
-            <KeyRound className="size-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">Recovery Codes</p>
-              <p className="text-xs text-muted-foreground">
-                Backup codes for account recovery
-              </p>
+function RecoveryCodesCard({
+  enabled,
+  remaining,
+  totpEnabled,
+}: {
+  enabled: boolean
+  remaining: number
+  totpEnabled: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [newCodes, setNewCodes] = useState<string[]>([])
+  const [codesCopied, setCodesCopied] = useState(false)
+  const regenerateRecoveryCodes = useAction(regenerateRecoveryCodesAction)
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!codesCopied) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCodesCopied(false)
+    }, 1500)
+
+    return () => window.clearTimeout(timeout)
+  }, [codesCopied])
+
+  const handleGenerateCodes = async () => {
+    const res = await regenerateRecoveryCodes.executeAsync()
+
+    if (res?.data?.failure) {
+      toast.error(res.data.failure)
+      return
+    }
+
+    if (res?.data?.recoveryCodes) {
+      setNewCodes(res.data.recoveryCodes)
+      toast.success(res.data.success ?? "Recovery codes generated")
+      router.refresh()
+    }
+  }
+
+  const handleCopyCodes = async () => {
+    if (newCodes.length === 0) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(newCodes.join("\n"))
+      setCodesCopied(true)
+    } catch {
+      toast.error("Unable to copy recovery codes")
+    }
+  }
+
+  const handleDownloadCodes = () => {
+    if (newCodes.length === 0) {
+      return
+    }
+
+    const content = [
+      "Certfolio recovery codes",
+      "",
+      "Store these codes somewhere safe. Each code can be used once.",
+      "",
+      ...newCodes,
+      "",
+      `Generated: ${new Date().toISOString()}`,
+    ].join("\n")
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+
+    link.href = url
+    link.download = "certfolio-recovery-codes.txt"
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+
+    if (!nextOpen) {
+      setNewCodes([])
+      setCodesCopied(false)
+    }
+  }
+
+  if (!totpEnabled) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="pointer-events-none flex items-center justify-between rounded-lg border p-4 opacity-50">
+            <div className="flex items-center gap-3">
+              <KeyRound className="size-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Recovery Codes</p>
+                <p className="text-xs text-muted-foreground">
+                  Backup codes for account recovery
+                </p>
+              </div>
             </div>
+            <Button variant="outline" size="sm" disabled>
+              View
+            </Button>
           </div>
-          <Button variant="outline" size="sm" disabled>
-            View
-          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Available once authenticator MFA is enabled.</TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex items-center gap-3">
+          <KeyRound className="size-5 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium">Recovery Codes</p>
+            <p className="text-xs text-muted-foreground">
+              {enabled
+                ? `${remaining} code${remaining === 1 ? "" : "s"} remaining`
+                : "No recovery codes generated yet"}
+            </p>
+          </div>
         </div>
-      </TooltipTrigger>
-      <TooltipContent>Available once MFA is enabled.</TooltipContent>
-    </Tooltip>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            {enabled ? "Manage" : "Generate"}
+          </Button>
+        </DialogTrigger>
+      </div>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Recovery Codes</DialogTitle>
+          <DialogDescription>
+            Use a recovery code to sign in if you lose access to your
+            authenticator app. Each code works once.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+            {enabled
+              ? `${remaining} recovery code${remaining === 1 ? "" : "s"} remaining. Generating a new set invalidates all previous codes.`
+              : "Generate a set of backup codes and store them somewhere safe."}
+          </div>
+
+          {newCodes.length > 0 ? (
+            <div className="rounded-lg bg-muted/20 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">New recovery codes</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Download recovery codes"
+                    className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                    onClick={handleDownloadCodes}
+                  >
+                    <Download className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Copy recovery codes"
+                    className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                    onClick={handleCopyCodes}
+                  >
+                    {codesCopied ? (
+                      <CheckCircle2 className="size-4 text-emerald-400" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {newCodes.map((code) => (
+                  <div
+                    key={code}
+                    className="rounded-md bg-background px-3 py-2 font-mono text-sm"
+                  >
+                    {code}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter className="sm:justify-start">
+            <Button
+              onClick={handleGenerateCodes}
+              disabled={regenerateRecoveryCodes.isPending}
+            >
+              {regenerateRecoveryCodes.isPending && (
+                <Spinner className="size-4" />
+              )}
+              {enabled ? "Regenerate recovery codes" : "Generate recovery codes"}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

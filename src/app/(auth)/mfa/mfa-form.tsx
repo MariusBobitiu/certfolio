@@ -39,6 +39,7 @@ export function MfaForm({
   resendAvailableAt,
 }: MfaFormProps) {
   const [cooldownLabel, setCooldownLabel] = useState("")
+  const [totpMode, setTotpMode] = useState<"totp" | "recovery">("totp")
 
   const resendAt = useMemo(() => {
     return new Date(resendAvailableAt)
@@ -56,7 +57,7 @@ export function MfaForm({
     VerifyMfaCodeOutput
   >({
     resolver: standardSchemaResolver(verifyMfaCodeSchema),
-    defaultValues: { code: "" },
+    defaultValues: { code: "", codeType: "totp" },
   })
 
   const verifyAction = useAction(verifyMfaCodeAction)
@@ -116,7 +117,10 @@ export function MfaForm({
 
   const handleVerify = (values: VerifyMfaCodeInput) => {
     clearErrors("root")
-    verifyAction.execute(values)
+    verifyAction.execute({
+      ...values,
+      codeType: method === "totp" ? totpMode : "totp",
+    })
   }
 
   const handleResend = () => {
@@ -189,17 +193,83 @@ export function MfaForm({
           </form>
         </div>
       ) : (
-        <div className="rounded-xl border bg-muted/20 p-5">
-          <div className="flex items-start gap-3">
-            <Shield className="mt-0.5 size-4 text-muted-foreground" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Authenticator app required</p>
-              <p className="text-sm text-muted-foreground">
-                This account uses TOTP. The verification UI for that method has
-                not been implemented yet.
-              </p>
+        <div className="space-y-6">
+          <div className="rounded-xl border bg-muted/20 p-5">
+            <div className="flex items-start gap-3">
+              <Shield className="mt-0.5 size-4 text-muted-foreground" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {totpMode === "totp"
+                    ? "Open your authenticator app"
+                    : "Use a recovery code"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {totpMode === "totp"
+                    ? "Enter the current 6-digit code to finish signing in."
+                    : "Enter one of your saved recovery codes to finish signing in."}
+                </p>
+              </div>
             </div>
           </div>
+
+          <form onSubmit={handleSubmit(handleVerify)} className="space-y-4">
+            <FieldGroup>
+              <Field data-invalid={Boolean(errors.code)}>
+                <FieldLabel htmlFor="code">
+                  {totpMode === "totp" ? "Authenticator code" : "Recovery code"}
+                </FieldLabel>
+                <Input
+                  id="code"
+                  inputMode={totpMode === "totp" ? "numeric" : "text"}
+                  autoComplete="one-time-code"
+                  maxLength={totpMode === "totp" ? 6 : 16}
+                  placeholder={
+                    totpMode === "totp" ? "123456" : "ABCD-EFGH"
+                  }
+                  disabled={verifyAction.isPending}
+                  {...register("code")}
+                />
+                <FieldError errors={[errors.code]} />
+              </Field>
+            </FieldGroup>
+
+            <FieldError errors={[errors.root]} />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={verifyAction.isPending}
+            >
+              {verifyAction.isPending && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              {verifyAction.isPending ? "Verifying..." : "Verify and continue"}
+            </Button>
+
+            {totpMode === "totp" ? (
+              <button
+                type="button"
+                className="w-full text-sm text-muted-foreground transition hover:text-foreground"
+                onClick={() => {
+                  clearErrors()
+                  setTotpMode("recovery")
+                }}
+              >
+                Can&apos;t access your authenticator app? Use a recovery code
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="w-full text-sm text-muted-foreground transition hover:text-foreground"
+                onClick={() => {
+                  clearErrors()
+                  setTotpMode("totp")
+                }}
+              >
+                Back to authenticator code
+              </button>
+            )}
+          </form>
         </div>
       )}
     </div>

@@ -42,7 +42,11 @@ export default async function SecuritySlot() {
           emailEnabled={mfaSummary.emailEnabled}
           totpEnabled={mfaSummary.totpEnabled}
         />
-        <RecoveryCodesCard />
+        <RecoveryCodesCard
+          enabled={mfaSummary.recoveryCodesEnabled}
+          remaining={mfaSummary.recoveryCodesRemaining}
+          totpEnabled={mfaSummary.totpEnabled}
+        />
       </div>
 
       <Separator />

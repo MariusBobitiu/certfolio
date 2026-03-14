@@ -13,6 +13,7 @@ import {
 import {
   getEnabledMfaMethods,
   issueEmailMfaChallenge,
+  issueTotpMfaChallenge,
   setPendingMfaCookie,
 } from "@/lib/auth/mfa"
 import { signInSchema } from "./schema"
@@ -51,11 +52,9 @@ export const signInAction = actionClient
 
     const { ipAddress, city, userAgent } = await getRequestSessionContext()
     const enabledMfaMethods = await getEnabledMfaMethods(user.id)
-    const emailMfaEnabled = enabledMfaMethods.some(
-      (method) => method.method === "email"
-    )
+    const primaryMfaMethod = enabledMfaMethods[0]
 
-    if (emailMfaEnabled) {
+    if (primaryMfaMethod?.method === "email") {
       const challenge = await issueEmailMfaChallenge({
         userId: user.id,
         email: user.email,
@@ -68,6 +67,24 @@ export const signInAction = actionClient
 
       await setPendingMfaCookie({
         method: "email",
+        userId: user.id,
+        verificationId: challenge.verificationId,
+      })
+
+      redirect("/mfa")
+    }
+
+    if (primaryMfaMethod?.method === "totp") {
+      const challenge = await issueTotpMfaChallenge({
+        userId: user.id,
+        rememberMe,
+        ipAddress,
+        city,
+        userAgent,
+      })
+
+      await setPendingMfaCookie({
+        method: "totp",
         userId: user.id,
         verificationId: challenge.verificationId,
       })

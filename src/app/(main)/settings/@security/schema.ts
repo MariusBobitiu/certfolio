@@ -18,3 +18,13 @@ export const revokeSessionSchema = z.object({
 })
 
 export type RevokeSessionInput = z.input<typeof revokeSessionSchema>
+
+export const totpCodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .length(6, "Enter the 6-digit code")
+    .regex(/^\d{6}$/, "Enter the 6-digit code"),
+})
+
+export type TotpCodeInput = z.input<typeof totpCodeSchema>

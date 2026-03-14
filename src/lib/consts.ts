@@ -1,0 +1,17 @@
+export const MFA_PENDING_COOKIE_NAME = "cfl_mfa"
+export const MFA_CHALLENGE_TTL_MS = 1000 * 60 * 10
+export const EMAIL_MFA_RESEND_INTERVAL_MS = 1000 * 60
+export const EMAIL_MFA_MAX_ATTEMPTS = 5
+export const TOTP_MFA_MAX_ATTEMPTS = 5
+export const TOTP_SECRET_BYTES = 20
+export const TOTP_PERIOD_SECONDS = 30
+export const TOTP_DIGITS = 6
+export const TOTP_ALGORITHM = "SHA1"
+export const TOTP_WINDOW = 1
+export const TOTP_ENCRYPTION_VERSION = 1
+export const TOTP_ENCRYPTION_ALGORITHM = "aes-256-gcm"
+export const TOTP_ISSUER = "Certfolio"
+export const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+export const RECOVERY_CODE_COUNT = 10
+export const RECOVERY_CODE_SEGMENT_LENGTH = 4
+export const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

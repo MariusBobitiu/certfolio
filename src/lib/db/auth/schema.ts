@@ -165,6 +165,7 @@ export const userMfaMethodsTable = pgTable(
     is_primary: boolean("is_primary").default(false).notNull(),
     secret_ciphertext: text("secret_ciphertext"),
     secret_iv: text("secret_iv"),
+    secret_auth_tag: text("secret_auth_tag"),
     secret_version: integer("secret_version").default(1).notNull(),
     algorithm: text("algorithm").default("SHA1").notNull(),
     digits: integer("digits").default(6).notNull(),
@@ -181,6 +182,7 @@ export const userMfaMethodsTable = pgTable(
       withTimezone: true,
       mode: "date",
     }),
+    last_used_counter: integer("last_used_counter"),
     disabled_at: timestamp("disabled_at", {
       withTimezone: true,
       mode: "date",
@@ -205,10 +207,38 @@ export const userMfaMethodsTable = pgTable(
   ]
 )
 
+export const userRecoveryCodesTable = pgTable(
+  "user_recovery_codes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    batch_id: uuid("batch_id").notNull(),
+    code_hash: text("code_hash").notNull(),
+    used_at: timestamp("used_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    created_at: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (codes) => [
+    index("user_recovery_codes_user_id_idx").on(codes.user_id),
+    index("user_recovery_codes_batch_id_idx").on(codes.batch_id),
+    index("user_recovery_codes_used_at_idx").on(codes.used_at),
+  ]
+)
+
 export const UsersTable = usersTable
 export const SessionsTable = sessionsTable
 export const VerificationsTable = verificationsTable
 export const UserMfaMethodsTable = userMfaMethodsTable
+export const UserRecoveryCodesTable = userRecoveryCodesTable
 
 export type User = InferSelectModel<typeof usersTable>
 export type NewUser = InferInsertModel<typeof usersTable>
@@ -220,3 +250,5 @@ export type NewVerification = InferInsertModel<
 >
 export type UserMfaMethod = InferSelectModel<typeof userMfaMethodsTable>
 export type NewUserMfaMethod = InferInsertModel<typeof userMfaMethodsTable>
+export type UserRecoveryCode = InferSelectModel<typeof userRecoveryCodesTable>
+export type NewUserRecoveryCode = InferInsertModel<typeof userRecoveryCodesTable>

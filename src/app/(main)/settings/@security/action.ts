@@ -5,13 +5,21 @@ import { hash, verify } from "@node-rs/argon2"
 import { actionClient } from "@/lib/safe-action"
 import { getCurrentSession, revokeSessionById } from "@/lib/auth/session"
 import {
+  beginTotpEnrollment,
+  confirmTotpEnrollment,
   disableEmailMfaMethod,
+  disableTotpMfaMethod,
   enableEmailMfaMethod,
   getMfaMethodSummary,
+  generateRecoveryCodes,
 } from "@/lib/auth/mfa"
 import { validatePassword } from "@/lib/auth/password-validation"
 import { db, SessionsTable, UsersTable } from "@/lib/db/drizzle"
-import { changePasswordSchema, revokeSessionSchema } from "./schema"
+import {
+  changePasswordSchema,
+  revokeSessionSchema,
+  totpCodeSchema,
+} from "./schema"
 
 export const changePasswordAction = actionClient
   .inputSchema(changePasswordSchema)
@@ -113,6 +121,78 @@ export const disableEmailMfaAction = actionClient.action(async () => {
   return { success: "Email MFA disabled" }
 })
 
+export const beginTotpEnrollmentAction = actionClient.action(async () => {
+  const session = await getCurrentSession()
+  if (!session) return { failure: "Unauthorized" }
+
+  const result = await beginTotpEnrollment({
+    userId: session.user.id,
+    email: session.user.email,
+  })
+
+  if (!result.success) {
+    return { failure: result.failure }
+  }
+
+  return {
+    success: "Authenticator app setup started",
+    secret: result.secret,
+    otpauthUrl: result.otpauthUrl,
+    issuer: result.issuer,
+    accountName: result.accountName,
+  }
+})
+
+export const confirmTotpEnrollmentAction = actionClient
+  .inputSchema(totpCodeSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) return { failure: "Unauthorized" }
+
+    const result = await confirmTotpEnrollment({
+      userId: session.user.id,
+      code: parsedInput.code,
+    })
+
+    if (!result.success) {
+      return { failure: result.failure }
+    }
+
+    const recoveryCodes = await generateRecoveryCodes(session.user.id)
+
+    return {
+      success: "Authenticator app MFA enabled",
+      recoveryCodes,
+    }
+  })
+
+export const disableTotpMfaAction = actionClient.action(async () => {
+  const session = await getCurrentSession()
+  if (!session) return { failure: "Unauthorized" }
+
+  await disableTotpMfaMethod(session.user.id)
+
+  return { success: "Authenticator app MFA disabled" }
+})
+
+export const regenerateRecoveryCodesAction = actionClient.action(async () => {
+  const session = await getCurrentSession()
+  if (!session) return { failure: "Unauthorized" }
+
+  const summary = await getMfaMethodSummary(session.user.id)
+
+  if (!summary.totpEnabled) {
+    return { failure: "Enable authenticator app MFA before generating recovery codes." }
+  }
+
+  const recoveryCodes = await generateRecoveryCodes(session.user.id)
+
+  return {
+    success: "Recovery codes regenerated",
+    recoveryCodes,
+  }
+})
+
 export async function getActiveSessions(userId: string) {
   return db
     .select()
@@ -163,8 +243,8 @@ export async function getRecentSecurityActivity(userId: string) {
   }
 
   const MFA_METHOD_LABELS: Record<string, string> = {
-    email: "Email",
-    totp: "TOTP",
+    email: "Email One-Time Code",
+    totp: "Authenticator App",
   }
 
   const recentMfaChallenges = recentVerifications.filter(
@@ -179,7 +259,7 @@ export async function getRecentSecurityActivity(userId: string) {
           ? verification.consumed_at
             ? `Signed in using ${
                 MFA_METHOD_LABELS[verification.method] ?? verification.method
-              } ${verification.method === "totp" ? "T" : ""}OTP`
+              }`
             : "MFA challenge started"
           : (LABEL_MAP[verification.type] ?? verification.type),
       timestamp: verification.consumed_at ?? verification.created_at,
