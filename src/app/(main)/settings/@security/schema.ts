@@ -1,5 +1,11 @@
 import * as z from "zod/v4"
 
+export const sensitiveActionSchema = z.object({
+  password: z.string().trim().optional(),
+})
+
+export type SensitiveActionInput = z.input<typeof sensitiveActionSchema>
+
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
@@ -25,6 +31,7 @@ export const totpCodeSchema = z.object({
     .trim()
     .length(6, "Enter the 6-digit code")
     .regex(/^\d{6}$/, "Enter the 6-digit code"),
+  password: z.string().trim().optional(),
 })
 
 export type TotpCodeInput = z.input<typeof totpCodeSchema>

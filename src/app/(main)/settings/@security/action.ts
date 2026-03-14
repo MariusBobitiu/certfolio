@@ -3,6 +3,7 @@
 import { and, desc, eq, gt, isNull, ne } from "drizzle-orm"
 import { hash, verify } from "@node-rs/argon2"
 import { actionClient } from "@/lib/safe-action"
+import { requireRecentPasswordConfirmation } from "@/lib/auth/recent-password"
 import { getCurrentSession, revokeSessionById } from "@/lib/auth/session"
 import {
   beginTotpEnrollment,
@@ -18,6 +19,7 @@ import { db, SessionsTable, UsersTable } from "@/lib/db/drizzle"
 import {
   changePasswordSchema,
   revokeSessionSchema,
+  sensitiveActionSchema,
   totpCodeSchema,
 } from "./schema"
 
@@ -117,51 +119,93 @@ export const revokeAllOtherSessionsAction = actionClient.action(async () => {
   return { success: "All other sessions revoked" }
 })
 
-export const enableEmailMfaAction = actionClient.action(async () => {
-  const session = await getCurrentSession()
-  if (!session) return { failure: "Unauthorized" }
+export const enableEmailMfaAction = actionClient
+  .inputSchema(sensitiveActionSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) return { failure: "Unauthorized" }
 
-  await enableEmailMfaMethod(session.user.id)
+    const confirmation = await requireRecentPasswordConfirmation(
+      session,
+      parsedInput.password
+    )
 
-  return { success: "Email MFA enabled" }
-})
+    if (!confirmation.success) {
+      return confirmation
+    }
 
-export const disableEmailMfaAction = actionClient.action(async () => {
-  const session = await getCurrentSession()
-  if (!session) return { failure: "Unauthorized" }
+    await enableEmailMfaMethod(session.user.id)
 
-  await disableEmailMfaMethod(session.user.id)
-
-  return { success: "Email MFA disabled" }
-})
-
-export const beginTotpEnrollmentAction = actionClient.action(async () => {
-  const session = await getCurrentSession()
-  if (!session) return { failure: "Unauthorized" }
-
-  const result = await beginTotpEnrollment({
-    userId: session.user.id,
-    email: session.user.email,
+    return { success: "Email MFA enabled" }
   })
 
-  if (!result.success) {
-    return { failure: result.failure }
-  }
+export const disableEmailMfaAction = actionClient
+  .inputSchema(sensitiveActionSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) return { failure: "Unauthorized" }
 
-  return {
-    success: "Authenticator app setup started",
-    secret: result.secret,
-    otpauthUrl: result.otpauthUrl,
-    issuer: result.issuer,
-    accountName: result.accountName,
-  }
-})
+    const confirmation = await requireRecentPasswordConfirmation(
+      session,
+      parsedInput.password
+    )
+
+    if (!confirmation.success) {
+      return confirmation
+    }
+
+    await disableEmailMfaMethod(session.user.id)
+
+    return { success: "Email MFA disabled" }
+  })
+
+export const beginTotpEnrollmentAction = actionClient
+  .inputSchema(sensitiveActionSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) return { failure: "Unauthorized" }
+
+    const confirmation = await requireRecentPasswordConfirmation(
+      session,
+      parsedInput.password
+    )
+
+    if (!confirmation.success) {
+      return confirmation
+    }
+
+    const result = await beginTotpEnrollment({
+      userId: session.user.id,
+      email: session.user.email,
+    })
+
+    if (!result.success) {
+      return { failure: result.failure }
+    }
+
+    return {
+      success: "Authenticator app setup started",
+      secret: result.secret,
+      otpauthUrl: result.otpauthUrl,
+      issuer: result.issuer,
+      accountName: result.accountName,
+    }
+  })
 
 export const confirmTotpEnrollmentAction = actionClient
   .inputSchema(totpCodeSchema)
   .action(async ({ parsedInput }) => {
     const session = await getCurrentSession()
     if (!session) return { failure: "Unauthorized" }
+
+    const confirmation = await requireRecentPasswordConfirmation(
+      session,
+      parsedInput.password
+    )
+
+    if (!confirmation.success) {
+      return confirmation
+    }
 
     const result = await confirmTotpEnrollment({
       userId: session.user.id,
@@ -180,32 +224,57 @@ export const confirmTotpEnrollmentAction = actionClient
     }
   })
 
-export const disableTotpMfaAction = actionClient.action(async () => {
-  const session = await getCurrentSession()
-  if (!session) return { failure: "Unauthorized" }
+export const disableTotpMfaAction = actionClient
+  .inputSchema(sensitiveActionSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) return { failure: "Unauthorized" }
 
-  await disableTotpMfaMethod(session.user.id)
+    const confirmation = await requireRecentPasswordConfirmation(
+      session,
+      parsedInput.password
+    )
 
-  return { success: "Authenticator app MFA disabled" }
-})
+    if (!confirmation.success) {
+      return confirmation
+    }
 
-export const regenerateRecoveryCodesAction = actionClient.action(async () => {
-  const session = await getCurrentSession()
-  if (!session) return { failure: "Unauthorized" }
+    await disableTotpMfaMethod(session.user.id)
 
-  const summary = await getMfaMethodSummary(session.user.id)
+    return { success: "Authenticator app MFA disabled" }
+  })
 
-  if (!summary.totpEnabled) {
-    return { failure: "Enable authenticator app MFA before generating recovery codes." }
-  }
+export const regenerateRecoveryCodesAction = actionClient
+  .inputSchema(sensitiveActionSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) return { failure: "Unauthorized" }
 
-  const recoveryCodes = await generateRecoveryCodes(session.user.id)
+    const confirmation = await requireRecentPasswordConfirmation(
+      session,
+      parsedInput.password
+    )
 
-  return {
-    success: "Recovery codes regenerated",
-    recoveryCodes,
-  }
-})
+    if (!confirmation.success) {
+      return confirmation
+    }
+
+    const summary = await getMfaMethodSummary(session.user.id)
+
+    if (!summary.totpEnabled) {
+      return {
+        failure:
+          "Enable authenticator app MFA before generating recovery codes.",
+      }
+    }
+
+    const recoveryCodes = await generateRecoveryCodes(session.user.id)
+
+    return {
+      success: "Recovery codes regenerated",
+      recoveryCodes,
+    }
+  })
 
 export async function getActiveSessions(userId: string) {
   return db

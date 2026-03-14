@@ -219,6 +219,9 @@ function MfaCard({
   const [totpSecretCopied, setTotpSecretCopied] = useState(false)
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([])
   const [recoveryCodesCopied, setRecoveryCodesCopied] = useState(false)
+  const [mfaPassword, setMfaPassword] = useState("")
+  const [mfaPasswordRequired, setMfaPasswordRequired] = useState(false)
+  const [mfaPasswordError, setMfaPasswordError] = useState<string | null>(null)
   const router = useRouter()
   const enableEmailMfa = useAction(enableEmailMfaAction)
   const disableEmailMfa = useAction(disableEmailMfaAction)
@@ -238,6 +241,36 @@ function MfaCard({
   })
 
   const mfaEnabled = emailEnabled || totpEnabled
+
+  const getSensitivePayload = () =>
+    mfaPassword.trim() ? { password: mfaPassword.trim() } : { password: undefined }
+
+  const handleSensitiveFailure = (res: {
+    data?: {
+      failure?: string
+      requiresPasswordConfirmation?: boolean
+    }
+  }) => {
+    if (res.data?.requiresPasswordConfirmation) {
+      setMfaPasswordRequired(true)
+      setMfaPasswordError(res.data.failure ?? "Confirm your password to continue.")
+      return true
+    }
+
+    if (res.data?.failure) {
+      setMfaPasswordError(null)
+      toast.error(res.data.failure)
+      return true
+    }
+
+    return false
+  }
+
+  const clearSensitivePasswordPrompt = () => {
+    setMfaPasswordRequired(false)
+    setMfaPasswordError(null)
+    setMfaPassword("")
+  }
 
   useEffect(() => {
     let active = true
@@ -277,10 +310,15 @@ function MfaCard({
   }, [totpSetup])
 
   const handleEnableEmail = async () => {
-    const res = await enableEmailMfa.executeAsync()
+    const res = await enableEmailMfa.executeAsync(getSensitivePayload())
+
+    if (handleSensitiveFailure(res ?? {})) {
+      return
+    }
 
     if (res?.data?.success) {
       toast.success(res.data.success)
+      clearSensitivePasswordPrompt()
       setOpen(false)
       router.refresh()
       return
@@ -290,10 +328,15 @@ function MfaCard({
   }
 
   const handleDisableEmail = async () => {
-    const res = await disableEmailMfa.executeAsync()
+    const res = await disableEmailMfa.executeAsync(getSensitivePayload())
+
+    if (handleSensitiveFailure(res ?? {})) {
+      return
+    }
 
     if (res?.data?.success) {
       toast.success(res.data.success)
+      clearSensitivePasswordPrompt()
       setOpen(false)
       router.refresh()
       return
@@ -303,20 +346,26 @@ function MfaCard({
   }
 
   const handleBeginTotpEnrollment = async () => {
-    const res = await beginTotpEnrollment.executeAsync()
+    const res = await beginTotpEnrollment.executeAsync(getSensitivePayload())
 
-    if (res?.data?.failure) {
-      toast.error(res.data.failure)
+    if (handleSensitiveFailure(res ?? {})) {
       return
     }
 
-    if (res?.data?.secret && res.data.otpauthUrl) {
+    if (
+      res?.data &&
+      "secret" in res.data &&
+      "otpauthUrl" in res.data &&
+      res.data.secret &&
+      res.data.otpauthUrl
+    ) {
       setTotpSetup({
         secret: res.data.secret,
         otpauthUrl: res.data.otpauthUrl,
         issuer: res.data.issuer,
         accountName: res.data.accountName,
       })
+      clearSensitivePasswordPrompt()
       setTotpStep("scan")
       resetTotpForm()
       clearTotpErrors()
@@ -329,8 +378,18 @@ function MfaCard({
 
   const handleConfirmTotpEnrollment = async (values: TotpCodeInput) => {
     clearTotpErrors()
+    setMfaPasswordError(null)
 
-    const res = await confirmTotpEnrollment.executeAsync(values)
+    const res = await confirmTotpEnrollment.executeAsync({
+      ...values,
+      ...getSensitivePayload(),
+    })
+
+    if (res?.data && "requiresPasswordConfirmation" in res.data) {
+      setMfaPasswordRequired(true)
+      setMfaPasswordError(res.data.failure ?? "Confirm your password to continue.")
+      return
+    }
 
     if (res?.data?.failure) {
       setTotpError("root", { message: res.data.failure })
@@ -339,6 +398,7 @@ function MfaCard({
 
     if (res?.data?.success) {
       toast.success(res.data.success)
+      clearSensitivePasswordPrompt()
       setNewRecoveryCodes(res.data.recoveryCodes ?? [])
       setTotpStep("recovery")
       resetTotpForm()
@@ -349,10 +409,15 @@ function MfaCard({
   }
 
   const handleDisableTotp = async () => {
-    const res = await disableTotpMfa.executeAsync()
+    const res = await disableTotpMfa.executeAsync(getSensitivePayload())
+
+    if (handleSensitiveFailure(res ?? {})) {
+      return
+    }
 
     if (res?.data?.success) {
       toast.success(res.data.success)
+      clearSensitivePasswordPrompt()
       setTotpSetup(null)
       setTotpQrDataUrl(null)
       setTotpStep("scan")
@@ -378,6 +443,7 @@ function MfaCard({
     setTotpSecretCopied(false)
     setNewRecoveryCodes([])
     setRecoveryCodesCopied(false)
+    clearSensitivePasswordPrompt()
     resetTotpForm()
     clearTotpErrors()
   }
@@ -537,6 +603,26 @@ function MfaCard({
                   : "Enable this if you want email to be your second factor while TOTP is still being built."}
               </div>
 
+              {mfaPasswordRequired ? (
+                <div className="space-y-2 rounded-lg border p-3">
+                  <Field>
+                    <FieldLabel htmlFor="mfaPasswordEmail">
+                      Confirm your password
+                    </FieldLabel>
+                    <Input
+                      id="mfaPasswordEmail"
+                      type="password"
+                      autoComplete="current-password"
+                      value={mfaPassword}
+                      onChange={(event) => setMfaPassword(event.target.value)}
+                    />
+                  </Field>
+                  {mfaPasswordError ? (
+                    <p className="text-sm text-destructive">{mfaPasswordError}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <DialogFooter className="sm:justify-start">
                 {emailEnabled ? (
                   <Button
@@ -574,6 +660,28 @@ function MfaCard({
                   <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
                     Authenticator app MFA is active for this account.
                   </div>
+
+                  {mfaPasswordRequired ? (
+                    <div className="space-y-2 rounded-lg border p-3">
+                      <Field>
+                        <FieldLabel htmlFor="mfaPasswordTotpDisable">
+                          Confirm your password
+                        </FieldLabel>
+                        <Input
+                          id="mfaPasswordTotpDisable"
+                          type="password"
+                          autoComplete="current-password"
+                          value={mfaPassword}
+                          onChange={(event) => setMfaPassword(event.target.value)}
+                        />
+                      </Field>
+                      {mfaPasswordError ? (
+                        <p className="text-sm text-destructive">
+                          {mfaPasswordError}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   <DialogFooter className="sm:justify-start">
                     <Button
@@ -708,6 +816,30 @@ function MfaCard({
                           )}
                           className="space-y-4"
                         >
+                          {mfaPasswordRequired ? (
+                            <div className="space-y-2 rounded-lg border p-3">
+                              <Field>
+                                <FieldLabel htmlFor="mfaPasswordTotpVerify">
+                                  Confirm your password
+                                </FieldLabel>
+                                <Input
+                                  id="mfaPasswordTotpVerify"
+                                  type="password"
+                                  autoComplete="current-password"
+                                  value={mfaPassword}
+                                  onChange={(event) =>
+                                    setMfaPassword(event.target.value)
+                                  }
+                                />
+                              </Field>
+                              {mfaPasswordError ? (
+                                <p className="text-sm text-destructive">
+                                  {mfaPasswordError}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+
                           <FieldGroup>
                             <Field data-invalid={Boolean(totpErrors.code)}>
                               <FieldLabel htmlFor="totpCode">
@@ -756,6 +888,30 @@ function MfaCard({
                         when you sign in.
                       </div>
 
+                      {mfaPasswordRequired ? (
+                        <div className="space-y-2 rounded-lg border p-3">
+                          <Field>
+                            <FieldLabel htmlFor="mfaPasswordTotpSetup">
+                              Confirm your password
+                            </FieldLabel>
+                            <Input
+                              id="mfaPasswordTotpSetup"
+                              type="password"
+                              autoComplete="current-password"
+                              value={mfaPassword}
+                              onChange={(event) =>
+                                setMfaPassword(event.target.value)
+                              }
+                            />
+                          </Field>
+                          {mfaPasswordError ? (
+                            <p className="text-sm text-destructive">
+                              {mfaPasswordError}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+
                       <DialogFooter className="sm:justify-start">
                         <Button
                           onClick={handleBeginTotpEnrollment}
@@ -791,6 +947,9 @@ function RecoveryCodesCard({
   const [open, setOpen] = useState(false)
   const [newCodes, setNewCodes] = useState<string[]>([])
   const [codesCopied, setCodesCopied] = useState(false)
+  const [password, setPassword] = useState("")
+  const [passwordRequired, setPasswordRequired] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const regenerateRecoveryCodes = useAction(regenerateRecoveryCodesAction)
   const router = useRouter()
 
@@ -807,15 +966,27 @@ function RecoveryCodesCard({
   }, [codesCopied])
 
   const handleGenerateCodes = async () => {
-    const res = await regenerateRecoveryCodes.executeAsync()
+    const res = await regenerateRecoveryCodes.executeAsync({
+      password: password.trim() || undefined,
+    })
+
+    if (res?.data && "requiresPasswordConfirmation" in res.data) {
+      setPasswordRequired(true)
+      setPasswordError(res.data.failure ?? "Confirm your password to continue.")
+      return
+    }
 
     if (res?.data?.failure) {
+      setPasswordError(null)
       toast.error(res.data.failure)
       return
     }
 
-    if (res?.data?.recoveryCodes) {
-      setNewCodes(res.data.recoveryCodes)
+    if (res?.data && "recoveryCodes" in res.data) {
+      setPasswordRequired(false)
+      setPasswordError(null)
+      setPassword("")
+      setNewCodes(res.data.recoveryCodes ?? [])
       toast.success(res.data.success ?? "Recovery codes generated")
       router.refresh()
     }
@@ -864,6 +1035,9 @@ function RecoveryCodesCard({
     if (!nextOpen) {
       setNewCodes([])
       setCodesCopied(false)
+      setPassword("")
+      setPasswordRequired(false)
+      setPasswordError(null)
     }
   }
 
@@ -926,6 +1100,26 @@ function RecoveryCodesCard({
               ? `${remaining} recovery code${remaining === 1 ? "" : "s"} remaining. Generating a new set invalidates all previous codes.`
               : "Generate a set of backup codes and store them somewhere safe."}
           </div>
+
+          {passwordRequired ? (
+            <div className="space-y-2 rounded-lg border p-3">
+              <Field>
+                <FieldLabel htmlFor="recoveryCodesPassword">
+                  Confirm your password
+                </FieldLabel>
+                <Input
+                  id="recoveryCodesPassword"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </Field>
+              {passwordError ? (
+                <p className="text-sm text-destructive">{passwordError}</p>
+              ) : null}
+            </div>
+          ) : null}
 
           {newCodes.length > 0 ? (
             <div className="rounded-lg bg-muted/20 p-4">
