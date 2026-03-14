@@ -6,7 +6,7 @@ import { SESSION_COOKIE_NAME, validateSessionToken } from "@/lib/auth/session-co
 import { redirect } from "next/navigation";
 
 export default async function SignInPage() {
-	const sessionCookie = await (await cookies()).get(SESSION_COOKIE_NAME);
+	const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME);
 
 	if (sessionCookie?.value) {
 		const session = await validateSessionToken(sessionCookie.value);

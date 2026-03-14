@@ -34,13 +34,12 @@ import { Spinner } from "@/components/ui/spinner"
 
 import {
   changePasswordAction,
+  disableEmailMfaAction,
+  enableEmailMfaAction,
   revokeSessionAction,
   revokeAllOtherSessionsAction,
 } from "./action"
-import {
-  changePasswordSchema,
-  type ChangePasswordInput,
-} from "./schema"
+import { changePasswordSchema, type ChangePasswordInput } from "./schema"
 
 function ChangePasswordDialog() {
   const [open, setOpen] = useState(false)
@@ -54,7 +53,11 @@ function ChangePasswordDialog() {
     formState: { errors },
   } = useForm<ChangePasswordInput>({
     resolver: standardSchemaResolver(changePasswordSchema),
-    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
   })
 
   const { executeAsync, isPending } = useAction(changePasswordAction)
@@ -172,8 +175,48 @@ function ChangePasswordDialog() {
   )
 }
 
-function MfaCard() {
+function MfaCard({
+  email,
+  emailEnabled,
+  totpEnabled,
+}: {
+  email: string
+  emailEnabled: boolean
+  totpEnabled: boolean
+}) {
   const [open, setOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<"email" | "totp">("email")
+  const router = useRouter()
+  const enableEmailMfa = useAction(enableEmailMfaAction)
+  const disableEmailMfa = useAction(disableEmailMfaAction)
+
+  const mfaEnabled = emailEnabled || totpEnabled
+
+  const handleEnableEmail = async () => {
+    const res = await enableEmailMfa.executeAsync()
+
+    if (res?.data?.success) {
+      toast.success(res.data.success)
+      setOpen(false)
+      router.refresh()
+      return
+    }
+
+    toast.error(res?.data?.failure ?? "Unable to enable email MFA")
+  }
+
+  const handleDisableEmail = async () => {
+    const res = await disableEmailMfa.executeAsync()
+
+    if (res?.data?.success) {
+      toast.success(res.data.success)
+      setOpen(false)
+      router.refresh()
+      return
+    }
+
+    toast.error(res?.data?.failure ?? "Unable to disable email MFA")
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -182,28 +225,107 @@ function MfaCard() {
           <ShieldCheck className="size-5 text-muted-foreground" />
           <div>
             <p className="text-sm font-medium">Two-Factor Authentication</p>
-            <p className="text-xs text-muted-foreground">Not enabled</p>
+            <p className="text-xs text-muted-foreground">
+              {mfaEnabled ? "Enabled" : "Not enabled"}
+            </p>
           </div>
         </div>
         <DialogTrigger asChild>
           <Button variant="outline" size="sm">
-            Enable
+            {mfaEnabled ? "Manage" : "Enable"}
           </Button>
         </DialogTrigger>
       </div>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Two-Factor Authentication</DialogTitle>
           <DialogDescription>
-            MFA setup coming soon — supported methods: Email OTP, Authenticator
-            app.
+            Add a second step to sign-in. Email OTP is live; authenticator app
+            support stays visible here as the next method.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Close
-          </Button>
-        </DialogFooter>
+
+        <div className="space-y-5">
+          <div className="inline-flex rounded-lg border bg-muted/30 p-1">
+            <button
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-sm transition ${
+                activeTab === "email"
+                  ? "bg-background font-medium shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setActiveTab("email")}
+            >
+              Email code
+            </button>
+            <button
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-sm transition ${
+                activeTab === "totp"
+                  ? "bg-background font-medium shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+              onClick={() => setActiveTab("totp")}
+            >
+              Authenticator app
+            </button>
+          </div>
+
+          {activeTab === "email" ? (
+            <div className="space-y-4 rounded-xl border p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Email OTP</p>
+                <p className="text-sm text-muted-foreground">
+                  Send a 6-digit code to {email} when you sign in with your
+                  password.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+                {emailEnabled
+                  ? "Email MFA is active for this account."
+                  : "Enable this if you want email to be your second factor while TOTP is still being built."}
+              </div>
+
+              <DialogFooter className="sm:justify-start">
+                {emailEnabled ? (
+                  <Button
+                    variant="destructive"
+                    onClick={handleDisableEmail}
+                    disabled={disableEmailMfa.isPending}
+                  >
+                    {disableEmailMfa.isPending && (
+                      <Spinner className="size-4" />
+                    )}
+                    Disable email MFA
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleEnableEmail}
+                    disabled={enableEmailMfa.isPending}
+                  >
+                    {enableEmailMfa.isPending && <Spinner className="size-4" />}
+                    Enable email MFA
+                  </Button>
+                )}
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 rounded-xl border p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Authenticator app</p>
+                <p className="text-sm text-muted-foreground">
+                  TOTP setup and verification will land here next.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+                The tab stays in place so the enrollment dialog structure
+                doesn&apos;t need to change once TOTP is wired up.
+              </div>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -213,7 +335,7 @@ function RecoveryCodesCard() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex items-center justify-between rounded-lg border p-4 opacity-50 pointer-events-none">
+        <div className="pointer-events-none flex items-center justify-between rounded-lg border p-4 opacity-50">
           <div className="flex items-center gap-3">
             <KeyRound className="size-5 text-muted-foreground" />
             <div>

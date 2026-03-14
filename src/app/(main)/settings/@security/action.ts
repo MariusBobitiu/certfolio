@@ -3,10 +3,12 @@
 import { and, desc, eq, gt, isNull, ne } from "drizzle-orm"
 import { hash, verify } from "@node-rs/argon2"
 import { actionClient } from "@/lib/safe-action"
+import { getCurrentSession, revokeSessionById } from "@/lib/auth/session"
 import {
-  getCurrentSession,
-  revokeSessionById,
-} from "@/lib/auth/session"
+  disableEmailMfaMethod,
+  enableEmailMfaMethod,
+  getMfaMethodSummary,
+} from "@/lib/auth/mfa"
 import { validatePassword } from "@/lib/auth/password-validation"
 import { db, SessionsTable, UsersTable } from "@/lib/db/drizzle"
 import { changePasswordSchema, revokeSessionSchema } from "./schema"
@@ -93,6 +95,24 @@ export const revokeAllOtherSessionsAction = actionClient.action(async () => {
   return { success: "All other sessions revoked" }
 })
 
+export const enableEmailMfaAction = actionClient.action(async () => {
+  const session = await getCurrentSession()
+  if (!session) return { failure: "Unauthorized" }
+
+  await enableEmailMfaMethod(session.user.id)
+
+  return { success: "Email MFA enabled" }
+})
+
+export const disableEmailMfaAction = actionClient.action(async () => {
+  const session = await getCurrentSession()
+  if (!session) return { failure: "Unauthorized" }
+
+  await disableEmailMfaMethod(session.user.id)
+
+  return { success: "Email MFA disabled" }
+})
+
 export async function getActiveSessions(userId: string) {
   return db
     .select()
@@ -105,6 +125,10 @@ export async function getActiveSessions(userId: string) {
       )
     )
     .orderBy(desc(SessionsTable.last_seen_at))
+}
+
+export async function getMfaSummary(userId: string) {
+  return getMfaMethodSummary(userId)
 }
 
 export async function getRecentSecurityActivity(userId: string) {

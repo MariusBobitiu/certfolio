@@ -10,6 +10,11 @@ import {
   getRequestSessionContext,
   setSessionCookie,
 } from "@/lib/auth/session"
+import {
+  getEnabledMfaMethods,
+  issueEmailMfaChallenge,
+  setPendingMfaCookie,
+} from "@/lib/auth/mfa"
 import { signInSchema } from "./schema"
 
 export const signInAction = actionClient
@@ -32,7 +37,10 @@ export const signInAction = actionClient
     }
 
     if (user.archived_at) {
-      return { failure: "This account has been deactivated. Contact support to reactivate." }
+      return {
+        failure:
+          "This account has been deactivated. Contact support to reactivate.",
+      }
     }
 
     const passwordValid = await verify(user.password_hash, password)
@@ -42,6 +50,31 @@ export const signInAction = actionClient
     }
 
     const { ipAddress, city, userAgent } = await getRequestSessionContext()
+    const enabledMfaMethods = await getEnabledMfaMethods(user.id)
+    const emailMfaEnabled = enabledMfaMethods.some(
+      (method) => method.method === "email"
+    )
+
+    if (emailMfaEnabled) {
+      const challenge = await issueEmailMfaChallenge({
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        rememberMe,
+        ipAddress,
+        city,
+        userAgent,
+      })
+
+      await setPendingMfaCookie({
+        method: "email",
+        userId: user.id,
+        verificationId: challenge.verificationId,
+      })
+
+      redirect("/mfa")
+    }
+
     const { token } = await createSession(user.id, {
       rememberMe,
       ipAddress,

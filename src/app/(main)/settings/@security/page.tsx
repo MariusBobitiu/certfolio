@@ -2,10 +2,17 @@ import { redirect } from "next/navigation"
 import { getCurrentSession } from "@/lib/auth/session"
 import {
   getActiveSessions,
+  getMfaSummary,
   getRecentSecurityActivity,
 } from "./action"
 import { Separator } from "@/components/ui/separator"
-import { ChangePasswordDialog, MfaCard, RecoveryCodesCard, RevokeAllSessionsButton, RevokeSessionButton } from "./security-form"
+import {
+  ChangePasswordDialog,
+  MfaCard,
+  RecoveryCodesCard,
+  RevokeAllSessionsButton,
+  RevokeSessionButton,
+} from "./security-form"
 import { Badge } from "@/components/ui/badge"
 import { formatDate, formatSessionLocation, parseUserAgent } from "@/lib/utils"
 
@@ -13,8 +20,9 @@ export default async function SecuritySlot() {
   const session = await getCurrentSession()
   if (!session) redirect("/sign-in")
 
-  const [sessions, activity] = await Promise.all([
+  const [activeSessions, mfaSummary, recentActivity] = await Promise.all([
     getActiveSessions(session.user.id),
+    getMfaSummary(session.user.id),
     getRecentSecurityActivity(session.user.id),
   ])
 
@@ -29,7 +37,11 @@ export default async function SecuritySlot() {
 
       <div className="space-y-3">
         <ChangePasswordDialog />
-        <MfaCard />
+        <MfaCard
+          email={session.user.email}
+          emailEnabled={mfaSummary.emailEnabled}
+          totpEnabled={mfaSummary.totpEnabled}
+        />
         <RecoveryCodesCard />
       </div>
 
@@ -40,11 +52,11 @@ export default async function SecuritySlot() {
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">Active Sessions</p>
           </div>
-          {sessions.length > 1 && <RevokeAllSessionsButton />}
+          {activeSessions.length > 1 && <RevokeAllSessionsButton />}
         </div>
 
         <div className="space-y-2">
-          {sessions.map((sess) => {
+          {activeSessions.map((sess) => {
             const isCurrent = sess.id === session.session.id
             const location = formatSessionLocation(sess.city)
 
@@ -59,7 +71,9 @@ export default async function SecuritySlot() {
                       {parseUserAgent(sess.user_agent)}
                     </p>
                     {location && (
-                      <p className="text-xs text-muted-foreground">{location}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {location}
+                      </p>
                     )}
                     {isCurrent && (
                       <Badge variant="secondary" className="text-xs">
@@ -83,14 +97,14 @@ export default async function SecuritySlot() {
 
       <Separator />
 
-      {activity.length > 0 ? (
+      {recentActivity.length > 0 ? (
         <>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium">Recent Security Activity</p>
             </div>
             <div className="space-y-2">
-              {activity.map((event, index) => (
+              {recentActivity.map((event, index) => (
                 <div
                   key={`${event.label}-${event.timestamp.toISOString()}-${index}`}
                   className="flex items-center justify-between rounded-lg border p-3"
