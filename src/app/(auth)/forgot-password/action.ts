@@ -2,7 +2,10 @@
 
 import { eq } from "drizzle-orm"
 
+import { RATE_LIMIT_CONFIG } from "@/lib/consts"
+import { consumeRateLimit } from "@/lib/auth/rate-limit"
 import { actionClient } from "@/lib/safe-action"
+import { getRequestSessionContext } from "@/lib/auth/session"
 import { sendPasswordResetEmail } from "@/lib/auth/password-reset"
 import { db, UsersTable } from "@/lib/db/drizzle"
 
@@ -14,6 +17,35 @@ export const forgotPasswordAction = actionClient
     const { email } = parsedInput
 
     const normalizedEmail = email.toLowerCase().trim()
+    const { ipAddress } = await getRequestSessionContext()
+
+    if (ipAddress) {
+      const ipLimit = await consumeRateLimit({
+        scope: "forgot_password:ip",
+        key: ipAddress,
+        maxAttempts: RATE_LIMIT_CONFIG.FORGOT_PASSWORD.IP_MAX_ATTEMPTS,
+        windowMs: RATE_LIMIT_CONFIG.FORGOT_PASSWORD.WINDOW_MS,
+      })
+
+      if (!ipLimit.allowed) {
+        return {
+          failure: "Too many password reset attempts. Try again later.",
+        }
+      }
+    }
+
+    const accountLimit = await consumeRateLimit({
+      scope: "forgot_password:account",
+      key: normalizedEmail,
+      maxAttempts: RATE_LIMIT_CONFIG.FORGOT_PASSWORD.ACCOUNT_MAX_ATTEMPTS,
+      windowMs: RATE_LIMIT_CONFIG.FORGOT_PASSWORD.WINDOW_MS,
+    })
+
+    if (!accountLimit.allowed) {
+      return {
+        failure: "Too many password reset attempts. Try again later.",
+      }
+    }
 
     const [user] = await db
       .select()

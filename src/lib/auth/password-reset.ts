@@ -32,15 +32,30 @@ function buildResetUrl(token: string) {
 async function createResetRecord(userId: string, email: string) {
   const token = randomBytes(32).toString("base64url")
   const tokenHash = hashResetToken(token)
+  const now = new Date()
 
-  await db.insert(VerificationsTable).values({
-    user_id: userId,
-    purpose: "password_reset",
-    method: "email",
-    target: email,
-    token_hash: tokenHash,
-    expires_at: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
-    metadata: {},
+  await db.transaction(async (tx) => {
+    await tx
+      .update(VerificationsTable)
+      .set({ consumed_at: now })
+      .where(
+        and(
+          eq(VerificationsTable.user_id, userId),
+          eq(VerificationsTable.purpose, "password_reset"),
+          eq(VerificationsTable.method, "email"),
+          isNull(VerificationsTable.consumed_at)
+        )
+      )
+
+    await tx.insert(VerificationsTable).values({
+      user_id: userId,
+      purpose: "password_reset",
+      method: "email",
+      target: email,
+      token_hash: tokenHash,
+      expires_at: new Date(now.getTime() + PASSWORD_RESET_TTL_MS),
+      metadata: {},
+    })
   })
 
   return token
