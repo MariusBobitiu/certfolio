@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { actionClient } from "@/lib/safe-action"
+import { consumeRateLimit, resetRateLimit } from "@/lib/auth/rate-limit"
 import {
   clearPendingMfaCookie,
   consumeRecoveryCodeMfaChallenge,
@@ -11,8 +12,13 @@ import {
   verifyEmailMfaChallenge,
   verifyTotpMfaChallenge,
 } from "@/lib/auth/mfa"
-import { createSession, setSessionCookie } from "@/lib/auth/session"
+import { createSession, getRequestSessionContext, setSessionCookie } from "@/lib/auth/session"
 import { db, UsersTable, VerificationsTable } from "@/lib/db/drizzle"
+import {
+  MFA_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
+  MFA_IP_RATE_LIMIT_MAX_ATTEMPTS,
+  MFA_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/consts"
 import { and, eq } from "drizzle-orm"
 import { verifyMfaCodeSchema } from "./schema"
 
@@ -25,6 +31,32 @@ export const verifyMfaCodeAction = actionClient
       return {
         failure: "Your verification session has expired. Sign in again.",
       }
+    }
+
+    const { ipAddress: requestIpAddress } = await getRequestSessionContext()
+
+    if (requestIpAddress) {
+      const ipLimit = await consumeRateLimit({
+        scope: "mfa_verify:ip",
+        key: requestIpAddress,
+        maxAttempts: MFA_IP_RATE_LIMIT_MAX_ATTEMPTS,
+        windowMs: MFA_RATE_LIMIT_WINDOW_MS,
+      })
+
+      if (!ipLimit.allowed) {
+        return { failure: "Too many verification attempts. Try again later." }
+      }
+    }
+
+    const accountLimit = await consumeRateLimit({
+      scope: "mfa_verify:account",
+      key: pendingMfa.userId,
+      maxAttempts: MFA_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
+      windowMs: MFA_RATE_LIMIT_WINDOW_MS,
+    })
+
+    if (!accountLimit.allowed) {
+      return { failure: "Too many verification attempts. Try again later." }
     }
 
     const result =
@@ -48,6 +80,11 @@ export const verifyMfaCodeAction = actionClient
 
     if (!result.success) {
       return { failure: result.failure }
+    }
+
+    await resetRateLimit("mfa_verify:account", pendingMfa.userId)
+    if (requestIpAddress) {
+      await resetRateLimit("mfa_verify:ip", requestIpAddress)
     }
 
     const { metadata } = result

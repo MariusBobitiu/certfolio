@@ -234,11 +234,50 @@ export const userRecoveryCodesTable = pgTable(
   ]
 )
 
+export const authRateLimitsTable = pgTable(
+  "auth_rate_limits",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    scope: text("scope").notNull(),
+    key_hash: text("key_hash").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    window_started_at: timestamp("window_started_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    blocked_until: timestamp("blocked_until", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    created_at: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+    updated_at: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (limits) => [
+    uniqueIndex("auth_rate_limits_scope_key_hash_unique_idx").on(
+      limits.scope,
+      limits.key_hash
+    ),
+    index("auth_rate_limits_scope_idx").on(limits.scope),
+    index("auth_rate_limits_blocked_until_idx").on(limits.blocked_until),
+  ]
+)
+
 export const UsersTable = usersTable
 export const SessionsTable = sessionsTable
 export const VerificationsTable = verificationsTable
 export const UserMfaMethodsTable = userMfaMethodsTable
 export const UserRecoveryCodesTable = userRecoveryCodesTable
+export const AuthRateLimitsTable = authRateLimitsTable
 
 export type User = InferSelectModel<typeof usersTable>
 export type NewUser = InferInsertModel<typeof usersTable>
@@ -252,3 +291,5 @@ export type UserMfaMethod = InferSelectModel<typeof userMfaMethodsTable>
 export type NewUserMfaMethod = InferInsertModel<typeof userMfaMethodsTable>
 export type UserRecoveryCode = InferSelectModel<typeof userRecoveryCodesTable>
 export type NewUserRecoveryCode = InferInsertModel<typeof userRecoveryCodesTable>
+export type AuthRateLimit = InferSelectModel<typeof authRateLimitsTable>
+export type NewAuthRateLimit = InferInsertModel<typeof authRateLimitsTable>

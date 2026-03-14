@@ -4,7 +4,13 @@ import { eq } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { verify } from "@node-rs/argon2"
 import { actionClient } from "@/lib/safe-action"
+import { consumeRateLimit, resetRateLimit } from "@/lib/auth/rate-limit"
 import { db, UsersTable } from "@/lib/db/drizzle"
+import {
+  SIGN_IN_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
+  SIGN_IN_IP_RATE_LIMIT_MAX_ATTEMPTS,
+  SIGN_IN_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/consts"
 import {
   createSession,
   getRequestSessionContext,
@@ -22,11 +28,37 @@ export const signInAction = actionClient
   .inputSchema(signInSchema)
   .action(async ({ parsedInput }) => {
     const { email, password, rememberMe } = parsedInput
+    const normalizedEmail = email.trim().toLowerCase()
+    const { ipAddress, city, userAgent } = await getRequestSessionContext()
+
+    if (ipAddress) {
+      const ipLimit = await consumeRateLimit({
+        scope: "sign_in:ip",
+        key: ipAddress,
+        maxAttempts: SIGN_IN_IP_RATE_LIMIT_MAX_ATTEMPTS,
+        windowMs: SIGN_IN_RATE_LIMIT_WINDOW_MS,
+      })
+
+      if (!ipLimit.allowed) {
+        return { failure: "Too many sign-in attempts. Try again later." }
+      }
+    }
+
+    const accountLimit = await consumeRateLimit({
+      scope: "sign_in:account",
+      key: normalizedEmail,
+      maxAttempts: SIGN_IN_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
+      windowMs: SIGN_IN_RATE_LIMIT_WINDOW_MS,
+    })
+
+    if (!accountLimit.allowed) {
+      return { failure: "Too many sign-in attempts. Try again later." }
+    }
 
     const [user] = await db
       .select()
       .from(UsersTable)
-      .where(eq(UsersTable.email, email))
+      .where(eq(UsersTable.email, normalizedEmail))
       .limit(1)
 
     if (!user) {
@@ -50,7 +82,11 @@ export const signInAction = actionClient
       return { failure: "Invalid email or password" }
     }
 
-    const { ipAddress, city, userAgent } = await getRequestSessionContext()
+    await resetRateLimit("sign_in:account", normalizedEmail)
+    if (ipAddress) {
+      await resetRateLimit("sign_in:ip", ipAddress)
+    }
+
     const enabledMfaMethods = await getEnabledMfaMethods(user.id)
     const primaryMfaMethod = enabledMfaMethods[0]
 

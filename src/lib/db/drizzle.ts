@@ -41,6 +41,7 @@ export {
   SessionsTable,
   UserMfaMethodsTable,
   UserRecoveryCodesTable,
+  AuthRateLimitsTable,
   UsersTable,
 } from "@/lib/db/auth/schema"
 
@@ -53,6 +54,8 @@ export type {
   NewUser,
   NewUserMfaMethod,
   NewUserRecoveryCode,
+  AuthRateLimit,
+  NewAuthRateLimit,
   Session,
   User,
   UserMfaMethod,
