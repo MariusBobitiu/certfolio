@@ -9,6 +9,7 @@ import { getRequestSessionContext } from "@/lib/auth/session"
 import {
   clearPendingEmailVerificationCookie,
   getPendingEmailVerificationCookie,
+  logEmailVerificationSentEvent,
   sendEmailVerification,
 } from "@/lib/auth/email-verification"
 import { actionClient } from "@/lib/safe-action"
@@ -80,6 +81,7 @@ export const resendVerificationEmailAction = actionClient
           email: user.email,
           name: user.name,
         })
+        await logEmailVerificationSentEvent(user.id, user.email, "resend")
       } catch (error) {
         console.error("Failed to resend verification email:", error)
         return {

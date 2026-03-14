@@ -302,6 +302,7 @@ export async function getRecentSecurityActivity(userId: string) {
     .select({
       type: VerificationsTable.purpose,
       method: VerificationsTable.method,
+      metadata: VerificationsTable.metadata,
       created_at: VerificationsTable.created_at,
       consumed_at: VerificationsTable.consumed_at,
     })
@@ -341,18 +342,49 @@ export async function getRecentSecurityActivity(userId: string) {
 
   const events = [
     ...recentVerifications.map((verification) => ({
-      label:
-        verification.type === "mfa_challenge"
-          ? verification.consumed_at
+      label: (() => {
+        const event = verification.metadata?.event
+
+        if (verification.type === "email_verification") {
+          if (event === "sent") {
+            return verification.metadata?.source === "resend"
+              ? "Verification email re-sent"
+              : "Verification email sent"
+          }
+
+          if (event === "verified") {
+            return "Email verified"
+          }
+        }
+
+        if (verification.type === "password_reset") {
+          if (event === "requested") {
+            return "Password reset requested"
+          }
+
+          if (event === "completed") {
+            return "Password reset completed"
+          }
+        }
+
+        if (verification.type === "mfa_challenge") {
+          return verification.consumed_at
             ? `Signed in using ${
                 MFA_METHOD_LABELS[verification.method] ?? verification.method
               }`
             : "MFA challenge started"
-          : verification.type === "mfa_enrollment"
-            ? `${MFA_METHOD_LABELS[verification.method] ?? verification.method} enabled`
-            : verification.type === "mfa_disabled"
-              ? `${MFA_METHOD_LABELS[verification.method] ?? verification.method} disabled`
-              : (LABEL_MAP[verification.type] ?? verification.type),
+        }
+
+        if (verification.type === "mfa_enrollment") {
+          return `${MFA_METHOD_LABELS[verification.method] ?? verification.method} enabled`
+        }
+
+        if (verification.type === "mfa_disabled") {
+          return `${MFA_METHOD_LABELS[verification.method] ?? verification.method} disabled`
+        }
+
+        return LABEL_MAP[verification.type] ?? verification.type
+      })(),
       timestamp: verification.consumed_at ?? verification.created_at,
     })),
     ...recentSessions.map((s) => ({

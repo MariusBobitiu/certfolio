@@ -117,15 +117,30 @@ function buildVerificationUrl(token: string) {
 async function createVerificationRecord(userId: string, email: string) {
   const token = randomBytes(32).toString("base64url")
   const tokenHash = hashVerificationToken(token)
+  const now = new Date()
 
-  await db.insert(VerificationsTable).values({
-    user_id: userId,
-    purpose: "email_verification",
-    method: "email",
-    target: email,
-    token_hash: tokenHash,
-    expires_at: new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS),
-    metadata: {},
+  await db.transaction(async (tx) => {
+    await tx
+      .update(VerificationsTable)
+      .set({ consumed_at: now })
+      .where(
+        and(
+          eq(VerificationsTable.user_id, userId),
+          eq(VerificationsTable.purpose, "email_verification"),
+          eq(VerificationsTable.method, "email"),
+          isNull(VerificationsTable.consumed_at)
+        )
+      )
+
+    await tx.insert(VerificationsTable).values({
+      user_id: userId,
+      purpose: "email_verification",
+      method: "email",
+      target: email,
+      token_hash: tokenHash,
+      expires_at: new Date(now.getTime() + EMAIL_VERIFICATION_TTL_MS),
+      metadata: {},
+    })
   })
 
   return token
@@ -203,12 +218,40 @@ export async function verifyEmailToken(token: string) {
       .update(VerificationsTable)
       .set({ consumed_at: new Date() })
       .where(eq(VerificationsTable.id, verification.id))
+
+    await tx.insert(VerificationsTable).values({
+      user_id: verification.user_id,
+      purpose: "email_verification",
+      method: "email",
+      target: verification.target,
+      expires_at: new Date(),
+      consumed_at: new Date(),
+      metadata: { event: "verified" },
+    })
   })
 
   return {
     success: true as const,
     userId: verification.user_id,
   }
+}
+
+export async function logEmailVerificationSentEvent(
+  userId: string,
+  email: string,
+  source: "sign_up" | "resend"
+) {
+  const now = new Date()
+
+  await db.insert(VerificationsTable).values({
+    user_id: userId,
+    purpose: "email_verification",
+    method: "email",
+    target: email,
+    expires_at: now,
+    consumed_at: now,
+    metadata: { event: "sent", source },
+  })
 }
 
 export async function setPendingEmailVerificationCookie(params: {

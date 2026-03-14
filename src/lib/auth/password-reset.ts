@@ -61,6 +61,24 @@ async function createResetRecord(userId: string, email: string) {
   return token
 }
 
+export async function logPasswordResetEvent(
+  userId: string,
+  email: string,
+  event: "requested" | "completed"
+) {
+  const now = new Date()
+
+  await db.insert(VerificationsTable).values({
+    user_id: userId,
+    purpose: "password_reset",
+    method: "email",
+    target: email,
+    expires_at: now,
+    consumed_at: now,
+    metadata: { event },
+  })
+}
+
 export async function sendPasswordResetEmail(params: SendPasswordResetParams) {
   const token = await createResetRecord(params.userId, params.email)
   const resetUrl = buildResetUrl(token)

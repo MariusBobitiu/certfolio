@@ -14,7 +14,10 @@ import {
 } from "@/lib/db/drizzle"
 
 import { resetPasswordSchema } from "./schema"
-import { validatePasswordResetToken } from "@/lib/auth/password-reset"
+import {
+  logPasswordResetEvent,
+  validatePasswordResetToken,
+} from "@/lib/auth/password-reset"
 
 const resetPasswordWithTokenSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
@@ -82,6 +85,8 @@ export const resetPasswordAction = actionClient
         .set({ consumed_at: new Date() })
         .where(eq(VerificationsTable.id, result.verificationId))
     })
+
+    await logPasswordResetEvent(user.id, user.email, "completed")
 
     return { success: true as const }
   })

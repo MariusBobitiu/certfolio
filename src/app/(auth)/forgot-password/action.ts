@@ -6,7 +6,10 @@ import { RATE_LIMIT_CONFIG } from "@/lib/consts"
 import { consumeRateLimit } from "@/lib/auth/rate-limit"
 import { actionClient } from "@/lib/safe-action"
 import { getRequestSessionContext } from "@/lib/auth/session"
-import { sendPasswordResetEmail } from "@/lib/auth/password-reset"
+import {
+  logPasswordResetEvent,
+  sendPasswordResetEmail,
+} from "@/lib/auth/password-reset"
 import { db, UsersTable } from "@/lib/db/drizzle"
 
 import { forgotPasswordSchema } from "./schema"
@@ -67,6 +70,7 @@ export const forgotPasswordAction = actionClient
         email: user.email,
         name: user.name,
       })
+      await logPasswordResetEvent(user.id, user.email, "requested")
     } catch (error) {
       console.error("Failed to send password reset email:", error)
       return {

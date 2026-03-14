@@ -6,11 +6,15 @@ import { hash } from "@node-rs/argon2"
 import { eq } from "drizzle-orm"
 import { redirect } from "next/navigation"
 
+import { RATE_LIMIT_CONFIG } from "@/lib/consts"
+import { consumeRateLimit } from "@/lib/auth/rate-limit"
 import { actionClient } from "@/lib/safe-action"
 import {
+  logEmailVerificationSentEvent,
   sendEmailVerification,
   setPendingEmailVerificationCookie,
 } from "@/lib/auth/email-verification"
+import { getRequestSessionContext } from "@/lib/auth/session"
 import { db, UsersTable } from "@/lib/db/drizzle"
 
 import { signUpSchema } from "./schema"
@@ -68,6 +72,31 @@ export const signUpAction = actionClient
     const { name, email, password } = parsedInput
 
     const normalizedEmail = email.toLowerCase().trim()
+    const { ipAddress } = await getRequestSessionContext()
+
+    if (ipAddress) {
+      const ipLimit = await consumeRateLimit({
+        scope: "sign_up:ip",
+        key: ipAddress,
+        maxAttempts: RATE_LIMIT_CONFIG.SIGN_UP.IP_MAX_ATTEMPTS,
+        windowMs: RATE_LIMIT_CONFIG.SIGN_UP.WINDOW_MS,
+      })
+
+      if (!ipLimit.allowed) {
+        return { failure: "Too many sign-up attempts. Try again later." }
+      }
+    }
+
+    const accountLimit = await consumeRateLimit({
+      scope: "sign_up:account",
+      key: normalizedEmail,
+      maxAttempts: RATE_LIMIT_CONFIG.SIGN_UP.ACCOUNT_MAX_ATTEMPTS,
+      windowMs: RATE_LIMIT_CONFIG.SIGN_UP.WINDOW_MS,
+    })
+
+    if (!accountLimit.allowed) {
+      return { failure: "Too many sign-up attempts. Try again later." }
+    }
 
     const [existingUser] = await db
       .select({ id: UsersTable.id })
@@ -99,6 +128,7 @@ export const signUpAction = actionClient
         email: user.email,
         name: user.name,
       })
+      await logEmailVerificationSentEvent(user.id, user.email, "sign_up")
       await setPendingEmailVerificationCookie({
         userId: user.id,
         email: user.email,
