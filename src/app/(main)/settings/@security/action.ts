@@ -12,7 +12,9 @@ import {
   disableTotpMfaMethod,
   enableEmailMfaMethod,
   getMfaMethodSummary,
+  getTrustedMfaDevices,
   generateRecoveryCodes,
+  revokeTrustedMfaDevice,
   revokeTrustedMfaDevices,
 } from "@/lib/auth/mfa"
 import { validatePassword } from "@/lib/auth/password-validation"
@@ -20,6 +22,7 @@ import { db, SessionsTable, UsersTable } from "@/lib/db/drizzle"
 import {
   changePasswordSchema,
   revokeSessionSchema,
+  revokeTrustedDeviceSchema,
   sensitiveActionSchema,
   totpCodeSchema,
 } from "./schema"
@@ -121,6 +124,17 @@ export const revokeAllOtherSessionsAction = actionClient.action(async () => {
 
   return { success: "All other sessions revoked" }
 })
+
+export const revokeTrustedDeviceAction = actionClient
+  .inputSchema(revokeTrustedDeviceSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) return { failure: "Unauthorized" }
+
+    await revokeTrustedMfaDevice(session.user.id, parsedInput.deviceId)
+
+    return { success: "Remembered device removed" }
+  })
 
 export const enableEmailMfaAction = actionClient
   .inputSchema(sensitiveActionSchema)
@@ -293,6 +307,10 @@ export async function getActiveSessions(userId: string) {
 
 export async function getMfaSummary(userId: string) {
   return getMfaMethodSummary(userId)
+}
+
+export async function getTrustedDevices(userId: string) {
+  return getTrustedMfaDevices(userId)
 }
 
 export async function getRecentSecurityActivity(userId: string) {

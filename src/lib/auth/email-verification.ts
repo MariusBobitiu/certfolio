@@ -239,7 +239,8 @@ export async function verifyEmailToken(token: string) {
 export async function logEmailVerificationSentEvent(
   userId: string,
   email: string,
-  source: "sign_up" | "resend"
+  source: "sign_up" | "resend",
+  metadata?: { ipAddress?: string | null; userAgent?: string | null }
 ) {
   const now = new Date()
 
@@ -250,7 +251,12 @@ export async function logEmailVerificationSentEvent(
     target: email,
     expires_at: now,
     consumed_at: now,
-    metadata: { event: "sent", source },
+    metadata: {
+      event: "sent",
+      source,
+      ipAddress: metadata?.ipAddress ?? null,
+      userAgent: metadata?.userAgent ?? null,
+    },
   })
 }
 

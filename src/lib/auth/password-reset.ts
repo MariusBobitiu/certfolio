@@ -64,7 +64,8 @@ async function createResetRecord(userId: string, email: string) {
 export async function logPasswordResetEvent(
   userId: string,
   email: string,
-  event: "requested" | "completed"
+  event: "requested" | "completed",
+  metadata?: { ipAddress?: string | null; userAgent?: string | null }
 ) {
   const now = new Date()
 
@@ -75,7 +76,11 @@ export async function logPasswordResetEvent(
     target: email,
     expires_at: now,
     consumed_at: now,
-    metadata: { event },
+    metadata: {
+      event,
+      ipAddress: metadata?.ipAddress ?? null,
+      userAgent: metadata?.userAgent ?? null,
+    },
   })
 }
 

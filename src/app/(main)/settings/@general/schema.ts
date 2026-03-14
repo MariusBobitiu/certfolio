@@ -8,6 +8,7 @@ export const updateProfileSchema = z.object({
     .max(30, "Username must be at most 30 characters")
     .regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens"),
   email: z.email("Please enter a valid email"),
+  password: z.string().trim().optional(),
 })
 
 export type UpdateProfileInput = z.input<typeof updateProfileSchema>

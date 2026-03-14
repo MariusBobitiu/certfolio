@@ -42,6 +42,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Spinner } from "@/components/ui/spinner"
+import { formatDate, parseUserAgent } from "@/lib/utils"
 
 import {
   beginTotpEnrollmentAction,
@@ -51,6 +52,7 @@ import {
   disableTotpMfaAction,
   enableEmailMfaAction,
   regenerateRecoveryCodesAction,
+  revokeTrustedDeviceAction,
   revokeSessionAction,
   revokeAllOtherSessionsAction,
 } from "./action"
@@ -1276,10 +1278,88 @@ function RevokeAllSessionsButton() {
   )
 }
 
+function TrustedDevicesCard({
+  trustedDevices,
+}: {
+  trustedDevices: Array<{
+    id: string
+    user_agent: string | null
+    last_used_at: Date | null
+    expires_at: Date
+  }>
+}) {
+  const router = useRouter()
+  const { executeAsync, isPending } = useAction(revokeTrustedDeviceAction)
+
+  const handleRevoke = async (deviceId: string) => {
+    const res = await executeAsync({ deviceId })
+
+    if (res?.data?.success) {
+      toast.success(res.data.success)
+      router.refresh()
+      return
+    }
+
+    if (res?.data?.failure) {
+      toast.error(res.data.failure)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">Remembered Devices</p>
+          <p className="text-xs text-muted-foreground">
+            Browsers that can skip MFA on this account
+          </p>
+        </div>
+      </div>
+
+      {trustedDevices.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No remembered devices.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {trustedDevices.map((device) => (
+            <div
+              key={device.id}
+              className="flex items-center justify-between rounded-lg border p-3"
+            >
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">
+                  {parseUserAgent(device.user_agent)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {device.last_used_at
+                    ? `Last used ${formatDate(device.last_used_at)}`
+                    : `Added ${formatDate(device.expires_at)}`}{" "}
+                  &middot; Expires {formatDate(device.expires_at)}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRevoke(device.id)}
+                disabled={isPending}
+              >
+                {isPending && <Spinner className="size-3" />}
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export {
   ChangePasswordDialog,
   MfaCard,
   RecoveryCodesCard,
   RevokeAllSessionsButton,
   RevokeSessionButton,
+  TrustedDevicesCard,
 }

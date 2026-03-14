@@ -23,7 +23,7 @@ export const resendVerificationEmailAction = actionClient
   .inputSchema(resendVerificationSchema)
   .action(async ({ parsedInput }) => {
     const normalizedEmail = parsedInput.email.trim().toLowerCase()
-    const { ipAddress } = await getRequestSessionContext()
+    const { ipAddress, userAgent } = await getRequestSessionContext()
     const pendingVerification = await getPendingEmailVerificationCookie()
 
     if (
@@ -81,7 +81,10 @@ export const resendVerificationEmailAction = actionClient
           email: user.email,
           name: user.name,
         })
-        await logEmailVerificationSentEvent(user.id, user.email, "resend")
+        await logEmailVerificationSentEvent(user.id, user.email, "resend", {
+          ipAddress,
+          userAgent,
+        })
       } catch (error) {
         console.error("Failed to resend verification email:", error)
         return {

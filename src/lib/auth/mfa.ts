@@ -1443,6 +1443,33 @@ export async function revokeTrustedMfaDevices(userId: string) {
     )
 }
 
+export async function getTrustedMfaDevices(userId: string) {
+  return db
+    .select()
+    .from(TrustedMfaDevicesTable)
+    .where(
+      and(
+        eq(TrustedMfaDevicesTable.user_id, userId),
+        isNull(TrustedMfaDevicesTable.revoked_at),
+        gt(TrustedMfaDevicesTable.expires_at, new Date())
+      )
+    )
+    .orderBy(desc(TrustedMfaDevicesTable.last_used_at))
+}
+
+export async function revokeTrustedMfaDevice(userId: string, deviceId: string) {
+  await db
+    .update(TrustedMfaDevicesTable)
+    .set({ revoked_at: new Date(), updated_at: new Date() })
+    .where(
+      and(
+        eq(TrustedMfaDevicesTable.id, deviceId),
+        eq(TrustedMfaDevicesTable.user_id, userId),
+        isNull(TrustedMfaDevicesTable.revoked_at)
+      )
+    )
+}
+
 export async function hasTrustedMfaDevice(userId: string) {
   const cookieStore = await cookies()
   const cookie = cookieStore.get(MFA_CONFIG.TRUSTED_DEVICE.COOKIE_NAME)

@@ -111,7 +111,26 @@ export function ExportSection() {
 
 export function DeactivateSection() {
   const [confirming, setConfirming] = useState(false)
-  const { execute, isPending } = useAction(deactivateAccountAction)
+  const [password, setPassword] = useState("")
+  const [passwordRequired, setPasswordRequired] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const { executeAsync, isPending } = useAction(deactivateAccountAction)
+
+  const handleDeactivate = async () => {
+    const res = await executeAsync({
+      password: password.trim() || undefined,
+    })
+
+    if (res?.data && "requiresPasswordConfirmation" in res.data) {
+      setPasswordRequired(true)
+      setPasswordError(res.data.failure ?? "Confirm your password to continue.")
+      return
+    }
+
+    if (res?.data?.failure) {
+      toast.error(res.data.failure)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -138,16 +157,39 @@ export function DeactivateSection() {
             Your profile and credentials will be hidden. You will be signed out
             immediately.
           </p>
+          {passwordRequired ? (
+            <div className="max-w-sm">
+              <Label htmlFor="deactivate-password">Confirm password</Label>
+              <Input
+                id="deactivate-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {passwordError ? (
+                <p className="mt-2 text-sm text-destructive">{passwordError}</p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex gap-2">
             <Button
               variant="destructive"
-              onClick={() => execute()}
+              onClick={handleDeactivate}
               disabled={isPending}
             >
               {isPending && <Spinner className="size-4" />}
               Confirm Deactivation
             </Button>
-            <Button variant="outline" onClick={() => setConfirming(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirming(false)
+                setPassword("")
+                setPasswordRequired(false)
+                setPasswordError(null)
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -160,9 +202,18 @@ export function DeactivateSection() {
 export function DeleteSection({ userEmail }: { userEmail: string }) {
   const [confirming, setConfirming] = useState(false)
   const [confirmEmail, setConfirmEmail] = useState("")
-  const { execute, isPending, result } = useAction(deleteAccountAction)
+  const [password, setPassword] = useState("")
+  const [passwordRequired, setPasswordRequired] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const { executeAsync, isPending, result } = useAction(deleteAccountAction)
 
   useEffect(() => {
+    if (result.data && "requiresPasswordConfirmation" in result.data) {
+      setPasswordRequired(true)
+      setPasswordError(result.data.failure ?? "Confirm your password to continue.")
+      return
+    }
+
     if (result.data?.failure) {
       toast.error(result.data.failure)
     }
@@ -196,10 +247,30 @@ export function DeleteSection({ userEmail }: { userEmail: string }) {
               onChange={(e) => setConfirmEmail(e.target.value)}
             />
           </div>
+          {passwordRequired ? (
+            <div className="max-w-sm">
+              <Label htmlFor="delete-password">Confirm password</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {passwordError ? (
+                <p className="mt-2 text-sm text-destructive">{passwordError}</p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex gap-2">
             <Button
               variant="destructive"
-              onClick={() => execute({ confirmEmail })}
+              onClick={() =>
+                executeAsync({
+                  confirmEmail,
+                  password: password.trim() || undefined,
+                })
+              }
               disabled={isPending || confirmEmail !== userEmail}
             >
               {isPending && <Spinner className="size-4" />}
@@ -210,6 +281,9 @@ export function DeleteSection({ userEmail }: { userEmail: string }) {
               onClick={() => {
                 setConfirming(false)
                 setConfirmEmail("")
+                setPassword("")
+                setPasswordRequired(false)
+                setPasswordError(null)
               }}
             >
               Cancel

@@ -1,6 +1,11 @@
 "use server"
 
 import { and, eq, ne } from "drizzle-orm"
+import {
+  logEmailVerificationSentEvent,
+  sendEmailVerification,
+} from "@/lib/auth/email-verification"
+import { requireRecentPasswordConfirmation } from "@/lib/auth/recent-password"
 import { actionClient } from "@/lib/safe-action"
 import { getCurrentSession } from "@/lib/auth/session"
 import { db, UsersTable } from "@/lib/db/drizzle"
@@ -12,7 +17,19 @@ export const updateProfileAction = actionClient
     const session = await getCurrentSession()
     if (!session) return { failure: "Unauthorized" }
 
-    const { name, slug, email } = parsedInput
+    const { name, slug, email, password } = parsedInput
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (normalizedEmail !== session.user.email) {
+      const confirmation = await requireRecentPasswordConfirmation(
+        session,
+        password
+      )
+
+      if (!confirmation.success) {
+        return confirmation
+      }
+    }
 
     // Check slug uniqueness (excluding current user)
     const [existingSlug] = await db
@@ -29,9 +46,7 @@ export const updateProfileAction = actionClient
     const [existingEmail] = await db
       .select({ id: UsersTable.id })
       .from(UsersTable)
-      .where(
-        and(eq(UsersTable.email, email), ne(UsersTable.id, session.user.id))
-      )
+      .where(and(eq(UsersTable.email, normalizedEmail), ne(UsersTable.id, session.user.id)))
       .limit(1)
 
     if (existingEmail) {
@@ -40,8 +55,35 @@ export const updateProfileAction = actionClient
 
     await db
       .update(UsersTable)
-      .set({ name, slug, email, updated_at: new Date() })
+      .set({
+        name,
+        slug,
+        email: normalizedEmail,
+        email_verified_at:
+          normalizedEmail !== session.user.email
+            ? null
+            : session.user.email_verified_at,
+        updated_at: new Date(),
+      })
       .where(eq(UsersTable.id, session.user.id))
 
-    return { success: "Profile updated" }
+    if (normalizedEmail !== session.user.email) {
+      await sendEmailVerification({
+        userId: session.user.id,
+        email: normalizedEmail,
+        name: name,
+      })
+      await logEmailVerificationSentEvent(
+        session.user.id,
+        normalizedEmail,
+        "resend"
+      )
+    }
+
+    return {
+      success:
+        normalizedEmail !== session.user.email
+          ? "Profile updated. Please verify your new email address."
+          : "Profile updated",
+    }
   })

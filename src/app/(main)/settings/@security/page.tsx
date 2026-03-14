@@ -4,6 +4,7 @@ import {
   getActiveSessions,
   getMfaSummary,
   getRecentSecurityActivity,
+  getTrustedDevices,
 } from "./action"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -12,6 +13,7 @@ import {
   RecoveryCodesCard,
   RevokeAllSessionsButton,
   RevokeSessionButton,
+  TrustedDevicesCard,
 } from "./security-form"
 import { Badge } from "@/components/ui/badge"
 import { formatDate, formatSessionLocation, parseUserAgent } from "@/lib/utils"
@@ -20,10 +22,11 @@ export default async function SecuritySlot() {
   const session = await getCurrentSession()
   if (!session) redirect("/sign-in")
 
-  const [activeSessions, mfaSummary, recentActivity] = await Promise.all([
+  const [activeSessions, mfaSummary, recentActivity, trustedDevices] = await Promise.all([
     getActiveSessions(session.user.id),
     getMfaSummary(session.user.id),
     getRecentSecurityActivity(session.user.id),
+    getTrustedDevices(session.user.id),
   ])
 
   return (
@@ -47,6 +50,7 @@ export default async function SecuritySlot() {
           remaining={mfaSummary.recoveryCodesRemaining}
           totpEnabled={mfaSummary.totpEnabled}
         />
+        <TrustedDevicesCard trustedDevices={trustedDevices} />
       </div>
 
       <Separator />

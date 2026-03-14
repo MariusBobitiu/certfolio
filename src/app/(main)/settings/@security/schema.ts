@@ -25,6 +25,12 @@ export const revokeSessionSchema = z.object({
 
 export type RevokeSessionInput = z.input<typeof revokeSessionSchema>
 
+export const revokeTrustedDeviceSchema = z.object({
+  deviceId: z.string().uuid(),
+})
+
+export type RevokeTrustedDeviceInput = z.input<typeof revokeTrustedDeviceSchema>
+
 export const totpCodeSchema = z.object({
   code: z
     .string()

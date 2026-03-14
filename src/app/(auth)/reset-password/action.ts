@@ -5,6 +5,7 @@ import { and, eq, gt, isNull } from "drizzle-orm"
 import * as z from "zod/v4"
 
 import { actionClient } from "@/lib/safe-action"
+import { getRequestSessionContext } from "@/lib/auth/session"
 import {
   db,
   SessionsTable,
@@ -28,6 +29,7 @@ export const resetPasswordAction = actionClient
   .inputSchema(resetPasswordWithTokenSchema)
   .action(async ({ parsedInput }) => {
     const { password, token } = parsedInput
+    const { ipAddress, userAgent } = await getRequestSessionContext()
 
     const result = await validatePasswordResetToken(token)
 
@@ -86,7 +88,10 @@ export const resetPasswordAction = actionClient
         .where(eq(VerificationsTable.id, result.verificationId))
     })
 
-    await logPasswordResetEvent(user.id, user.email, "completed")
+    await logPasswordResetEvent(user.id, user.email, "completed", {
+      ipAddress,
+      userAgent,
+    })
 
     return { success: true as const }
   })

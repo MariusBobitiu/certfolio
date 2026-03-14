@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useAction } from "next-safe-action/hooks"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -33,26 +34,47 @@ export function GeneralForm({
 }: {
   defaultValues: UpdateProfileInput
 }) {
+  const router = useRouter()
+  const [passwordRequired, setPasswordRequired] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
     setError,
+    clearErrors,
+    reset,
     formState: { errors },
   } = useForm<UpdateProfileInput>({
     resolver: standardSchemaResolver(updateProfileSchema),
-    defaultValues,
+    defaultValues: {
+      ...defaultValues,
+      password: "",
+    },
   })
 
   const { execute, isPending, result } = useAction(updateProfileAction)
 
   useEffect(() => {
+    if (result.data && "requiresPasswordConfirmation" in result.data) {
+      setPasswordRequired(true)
+      setPasswordError(result.data.failure ?? "Confirm your password to continue.")
+      return
+    }
+
     if (result.data?.failure) {
       setError("root", { message: result.data.failure })
     }
     if (result.data?.success) {
+      setPasswordRequired(false)
+      setPasswordError(null)
       toast.success(result.data.success)
+      reset({
+        ...defaultValues,
+        password: "",
+      })
+      router.refresh()
     }
-  }, [result, setError])
+  }, [defaultValues, reset, result, router, setError])
 
   return (
     <div className="space-y-6">
@@ -64,7 +86,11 @@ export function GeneralForm({
       </div>
 
       <form
-        onSubmit={handleSubmit((values) => execute(values))}
+        onSubmit={handleSubmit((values) => {
+          clearErrors("root")
+          setPasswordError(null)
+          execute(values)
+        })}
         className="space-y-6"
       >
         <FieldGroup>
@@ -106,6 +132,25 @@ export function GeneralForm({
             />
             <FieldError errors={[errors.email]} />
           </Field>
+
+          {passwordRequired ? (
+            <Field data-invalid={Boolean(errors.password) || Boolean(passwordError)}>
+              <FieldLabel htmlFor="password">Confirm your password</FieldLabel>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                disabled={isPending}
+                {...register("password")}
+              />
+              <FieldError
+                errors={[
+                  errors.password,
+                  passwordError ? { message: passwordError } : undefined,
+                ]}
+              />
+            </Field>
+          ) : null}
         </FieldGroup>
 
         <FieldError errors={[errors.root]} />

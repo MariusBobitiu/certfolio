@@ -20,7 +20,7 @@ export const forgotPasswordAction = actionClient
     const { email } = parsedInput
 
     const normalizedEmail = email.toLowerCase().trim()
-    const { ipAddress } = await getRequestSessionContext()
+    const { ipAddress, userAgent } = await getRequestSessionContext()
 
     if (ipAddress) {
       const ipLimit = await consumeRateLimit({
@@ -70,7 +70,10 @@ export const forgotPasswordAction = actionClient
         email: user.email,
         name: user.name,
       })
-      await logPasswordResetEvent(user.id, user.email, "requested")
+      await logPasswordResetEvent(user.id, user.email, "requested", {
+        ipAddress,
+        userAgent,
+      })
     } catch (error) {
       console.error("Failed to send password reset email:", error)
       return {

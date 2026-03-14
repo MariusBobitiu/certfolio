@@ -2,14 +2,22 @@
 
 import { eq } from "drizzle-orm"
 import { redirect } from "next/navigation"
+import * as z from "zod/v4"
 import { actionClient } from "@/lib/safe-action"
+import { requireRecentPasswordConfirmation } from "@/lib/auth/recent-password"
 import {
   clearSessionCookie,
   getCurrentSession,
+  revokeUserSessions,
   revokeSessionByCookie,
 } from "@/lib/auth/session"
+import { revokeTrustedMfaDevices } from "@/lib/auth/mfa"
 import { db, UsersTable } from "@/lib/db/drizzle"
 import { deleteAccountSchema, exportDataSchema } from "./schema"
+
+const confirmPasswordSchema = z.object({
+  password: z.string().trim().optional(),
+})
 
 export const exportProfileAction = actionClient
   .inputSchema(exportDataSchema)
@@ -54,15 +62,28 @@ export const exportCredentialsAction = actionClient
     return { data: "", filename: "credentials.csv" }
   })
 
-export const deactivateAccountAction = actionClient.action(async () => {
+export const deactivateAccountAction = actionClient
+  .inputSchema(confirmPasswordSchema)
+  .action(async ({ parsedInput }) => {
   const session = await getCurrentSession()
   if (!session) return { failure: "Unauthorized" }
+
+  const confirmation = await requireRecentPasswordConfirmation(
+    session,
+    parsedInput.password
+  )
+
+  if (!confirmation.success) {
+    return confirmation
+  }
 
   await db
     .update(UsersTable)
     .set({ archived_at: new Date(), updated_at: new Date() })
     .where(eq(UsersTable.id, session.user.id))
 
+  await revokeTrustedMfaDevices(session.user.id)
+  await revokeUserSessions(session.user.id, { excludeSessionId: session.session.id })
   await revokeSessionByCookie()
   await clearSessionCookie()
 
@@ -75,6 +96,15 @@ export const deleteAccountAction = actionClient
     const session = await getCurrentSession()
     if (!session) return { failure: "Unauthorized" }
 
+    const confirmation = await requireRecentPasswordConfirmation(
+      session,
+      parsedInput.password
+    )
+
+    if (!confirmation.success) {
+      return confirmation
+    }
+
     if (parsedInput.confirmEmail !== session.user.email) {
       return { failure: "Email does not match your account" }
     }
@@ -84,6 +114,8 @@ export const deleteAccountAction = actionClient
       .set({ deleted_at: new Date(), updated_at: new Date() })
       .where(eq(UsersTable.id, session.user.id))
 
+    await revokeTrustedMfaDevices(session.user.id)
+    await revokeUserSessions(session.user.id, { excludeSessionId: session.session.id })
     await revokeSessionByCookie()
     await clearSessionCookie()
 

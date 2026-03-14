@@ -72,7 +72,7 @@ export const signUpAction = actionClient
     const { name, email, password } = parsedInput
 
     const normalizedEmail = email.toLowerCase().trim()
-    const { ipAddress } = await getRequestSessionContext()
+    const { ipAddress, userAgent } = await getRequestSessionContext()
 
     if (ipAddress) {
       const ipLimit = await consumeRateLimit({
@@ -128,7 +128,10 @@ export const signUpAction = actionClient
         email: user.email,
         name: user.name,
       })
-      await logEmailVerificationSentEvent(user.id, user.email, "sign_up")
+      await logEmailVerificationSentEvent(user.id, user.email, "sign_up", {
+        ipAddress,
+        userAgent,
+      })
       await setPendingEmailVerificationCookie({
         userId: user.id,
         email: user.email,

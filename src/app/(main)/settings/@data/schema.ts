@@ -8,6 +8,7 @@ export type ExportDataInput = z.input<typeof exportDataSchema>
 
 export const deleteAccountSchema = z.object({
   confirmEmail: z.email("Please enter a valid email"),
+  password: z.string().trim().optional(),
 })
 
 export type DeleteAccountInput = z.input<typeof deleteAccountSchema>
