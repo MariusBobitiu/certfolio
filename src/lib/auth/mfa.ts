@@ -746,7 +746,15 @@ export async function confirmTotpEnrollment(params: {
       metadata: { enrolled: true },
     })
 
-    return { success: true as const }
+    const recoveryCodes = await generateRecoveryCodesInTransaction(
+      tx,
+      params.userId
+    )
+
+    return {
+      success: true as const,
+      recoveryCodes,
+    }
   })
 }
 
@@ -777,7 +785,10 @@ export async function disableTotpMfaMethod(userId: string) {
   })
 }
 
-export async function generateRecoveryCodes(userId: string) {
+async function generateRecoveryCodesInTransaction(
+  tx: DbTransaction,
+  userId: string
+) {
   const batchId = randomUUID()
   const plainCodes = Array.from({ length: RECOVERY_CODE_COUNT }, () =>
     generateRecoveryCode()
@@ -786,21 +797,23 @@ export async function generateRecoveryCodes(userId: string) {
     plainCodes.map((code) => hashSecret(normalizeRecoveryCode(code)))
   )
 
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(UserRecoveryCodesTable)
-      .where(eq(UserRecoveryCodesTable.user_id, userId))
+  await tx
+    .delete(UserRecoveryCodesTable)
+    .where(eq(UserRecoveryCodesTable.user_id, userId))
 
-    await tx.insert(UserRecoveryCodesTable).values(
-      hashedCodes.map((codeHash) => ({
-        user_id: userId,
-        batch_id: batchId,
-        code_hash: codeHash,
-      }))
-    )
-  })
+  await tx.insert(UserRecoveryCodesTable).values(
+    hashedCodes.map((codeHash) => ({
+      user_id: userId,
+      batch_id: batchId,
+      code_hash: codeHash,
+    }))
+  )
 
   return plainCodes
+}
+
+export async function generateRecoveryCodes(userId: string) {
+  return db.transaction((tx) => generateRecoveryCodesInTransaction(tx, userId))
 }
 
 export async function getRecoveryCodeSummary(userId: string) {

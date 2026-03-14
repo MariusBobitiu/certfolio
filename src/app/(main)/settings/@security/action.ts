@@ -216,11 +216,9 @@ export const confirmTotpEnrollmentAction = actionClient
       return { failure: result.failure }
     }
 
-    const recoveryCodes = await generateRecoveryCodes(session.user.id)
-
     return {
       success: "Authenticator app MFA enabled",
-      recoveryCodes,
+      recoveryCodes: result.recoveryCodes,
     }
   })
 
