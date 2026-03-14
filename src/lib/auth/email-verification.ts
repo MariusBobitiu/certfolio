@@ -262,7 +262,6 @@ export async function getPendingEmailVerificationCookie() {
   const parsed = decodePendingEmailVerificationCookie(cookie.value)
 
   if (!parsed) {
-    await clearPendingEmailVerificationCookie()
     return null
   }
 
@@ -277,7 +276,19 @@ export async function getPendingEmailVerificationCookie() {
     Date.now() - parsed.confirmedAt >
       RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_TTL_MS
   ) {
-    await clearPendingEmailVerificationCookie()
+    return null
+  }
+
+  const [user] = await db
+    .select({
+      id: UsersTable.id,
+      email_verified_at: UsersTable.email_verified_at,
+    })
+    .from(UsersTable)
+    .where(eq(UsersTable.id, parsed.userId))
+    .limit(1)
+
+  if (!user || user.email_verified_at) {
     return null
   }
 

@@ -3,11 +3,11 @@ import { CheckCircle2, CircleAlert, MailCheck } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
-	clearPendingEmailVerificationCookie,
 	getPendingEmailVerificationCookie,
 	verifyEmailToken,
 } from "@/lib/auth/email-verification"
 
+import { ClearPendingEmailVerification } from "./clear-pending-email-verification"
 import { ResendVerificationForm } from "./resend-verification-form"
 
 type VerifyEmailPageProps = {
@@ -22,10 +22,9 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
 		const result = await verifyEmailToken(token)
 
 		if (result.success) {
-			await clearPendingEmailVerificationCookie()
-
 			return (
 				<div className="space-y-6 text-center">
+					<ClearPendingEmailVerification />
 					<div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
 						<CheckCircle2 className="size-6" />
 					</div>

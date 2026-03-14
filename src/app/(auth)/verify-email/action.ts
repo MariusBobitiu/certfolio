@@ -7,6 +7,7 @@ import { RATE_LIMIT_CONFIG } from "@/lib/consts"
 import { consumeRateLimit } from "@/lib/auth/rate-limit"
 import { getRequestSessionContext } from "@/lib/auth/session"
 import {
+  clearPendingEmailVerificationCookie,
   getPendingEmailVerificationCookie,
   sendEmailVerification,
 } from "@/lib/auth/email-verification"
@@ -92,3 +93,11 @@ export const resendVerificationEmailAction = actionClient
       success: "Verification email sent. Check your inbox for a new link.",
     }
   })
+
+export const clearPendingEmailVerificationAction = actionClient.action(
+  async () => {
+    await clearPendingEmailVerificationCookie()
+
+    return { success: true as const }
+  }
+)
