@@ -137,12 +137,14 @@ export async function getRecentSecurityActivity(userId: string) {
   const recentVerifications = await db
     .select({
       type: VerificationsTable.purpose,
+      method: VerificationsTable.method,
       created_at: VerificationsTable.created_at,
+      consumed_at: VerificationsTable.consumed_at,
     })
     .from(VerificationsTable)
     .where(eq(VerificationsTable.user_id, userId))
     .orderBy(desc(VerificationsTable.created_at))
-    .limit(5)
+    .limit(10)
 
   const recentSessions = await db
     .select({
@@ -151,23 +153,51 @@ export async function getRecentSecurityActivity(userId: string) {
     .from(SessionsTable)
     .where(eq(SessionsTable.user_id, userId))
     .orderBy(desc(SessionsTable.created_at))
-    .limit(3)
+    .limit(5)
 
   const LABEL_MAP: Record<string, string> = {
     email_verification: "Email verified",
     password_reset: "Password reset",
     sign_in_otp: "Signed in via OTP",
-    mfa_challenge: "MFA challenge completed",
     mfa_enrollment: "MFA method enrolled",
   }
 
+  const MFA_METHOD_LABELS: Record<string, string> = {
+    email: "Email",
+    totp: "TOTP",
+  }
+
+  const recentMfaChallenges = recentVerifications.filter(
+    (verification) =>
+      verification.type === "mfa_challenge" && Boolean(verification.consumed_at)
+  )
+
   const events = [
-    ...recentVerifications.map((v) => ({
-      label: LABEL_MAP[v.type] ?? v.type,
-      timestamp: v.created_at,
+    ...recentVerifications.map((verification) => ({
+      label:
+        verification.type === "mfa_challenge"
+          ? verification.consumed_at
+            ? `Signed in using ${
+                MFA_METHOD_LABELS[verification.method] ?? verification.method
+              } ${verification.method === "totp" ? "T" : ""}OTP`
+            : "MFA challenge started"
+          : (LABEL_MAP[verification.type] ?? verification.type),
+      timestamp: verification.consumed_at ?? verification.created_at,
     })),
     ...recentSessions.map((s) => ({
-      label: "Signed in",
+      label: recentMfaChallenges.some((verification) => {
+        if (!verification.consumed_at) {
+          return false
+        }
+
+        const deltaMs = Math.abs(
+          s.created_at.getTime() - verification.consumed_at.getTime()
+        )
+
+        return deltaMs <= 1000 * 30
+      })
+        ? "Sign in attempt"
+        : "Signed in",
       timestamp: s.created_at,
     })),
   ]

@@ -15,9 +15,22 @@ type CreateSessionOptions = {
   userAgent?: string | null
 }
 
+export type AuthenticatedUser = {
+  id: string
+  name: string
+  email: string
+  password_hash: string
+  email_verified_at: Date | null
+  slug: string | null
+  created_at: Date
+  updated_at: Date
+  archived_at: Date | null
+  deleted_at: Date | null
+}
+
 export type AuthSession = {
   session: typeof SessionsTable.$inferSelect
-  user: typeof UsersTable.$inferSelect
+  user: AuthenticatedUser
 }
 
 export function getSessionTtlSeconds(rememberMe: boolean) {
@@ -80,7 +93,18 @@ export async function validateSessionToken(token: string) {
   const [row] = await db
     .select({
       session: SessionsTable,
-      user: UsersTable,
+      user: {
+        id: UsersTable.id,
+        name: UsersTable.name,
+        email: UsersTable.email,
+        password_hash: UsersTable.password_hash,
+        email_verified_at: UsersTable.email_verified_at,
+        slug: UsersTable.slug,
+        created_at: UsersTable.created_at,
+        updated_at: UsersTable.updated_at,
+        archived_at: UsersTable.archived_at,
+        deleted_at: UsersTable.deleted_at,
+      },
     })
     .from(SessionsTable)
     .innerJoin(UsersTable, eq(SessionsTable.user_id, UsersTable.id))
