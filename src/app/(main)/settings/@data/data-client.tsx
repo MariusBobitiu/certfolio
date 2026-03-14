@@ -8,7 +8,6 @@ import { AlertTriangle, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 
 import {
@@ -28,7 +27,7 @@ function downloadFile(data: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-function ExportSection() {
+export function ExportSection() {
   const {
     execute: exportProfile,
     isPending: profilePending,
@@ -110,7 +109,7 @@ function ExportSection() {
   )
 }
 
-function DeactivateSection() {
+export function DeactivateSection() {
   const [confirming, setConfirming] = useState(false)
   const { execute, isPending } = useAction(deactivateAccountAction)
 
@@ -158,7 +157,7 @@ function DeactivateSection() {
   )
 }
 
-function DeleteSection({ userEmail }: { userEmail: string }) {
+export function DeleteSection({ userEmail }: { userEmail: string }) {
   const [confirming, setConfirming] = useState(false)
   const [confirmEmail, setConfirmEmail] = useState("")
   const { execute, isPending, result } = useAction(deleteAccountAction)
@@ -218,25 +217,6 @@ function DeleteSection({ userEmail }: { userEmail: string }) {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-export function DataClient({ userEmail }: { userEmail: string }) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Data & Account</h2>
-        <p className="text-sm text-muted-foreground">
-          Export your data, deactivate, or delete your account.
-        </p>
-      </div>
-
-      <ExportSection />
-      <Separator />
-      <DeactivateSection />
-      <Separator />
-      <DeleteSection userEmail={userEmail} />
     </div>
   )
 }
