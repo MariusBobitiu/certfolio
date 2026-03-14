@@ -23,3 +23,11 @@ export function formatDate(date: Date): string {
     minute: "2-digit",
   }).format(date)
 }
+
+export function formatSessionLocation(city: string | null): string | null {
+  if (!city) return null
+
+  const normalizedCity = city.trim()
+
+  return normalizedCity.length > 0 ? normalizedCity : null
+}

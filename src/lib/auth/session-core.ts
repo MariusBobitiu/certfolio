@@ -11,6 +11,7 @@ const SESSION_REFRESH_INTERVAL_MS = 1000 * 60 * 5
 type CreateSessionOptions = {
   rememberMe: boolean
   ipAddress?: string | null
+  city?: string | null
   userAgent?: string | null
 }
 
@@ -48,6 +49,7 @@ export async function createSession(
       session_token_hash: tokenHash,
       expires_at: expiresAt,
       ip_address: options.ipAddress ?? null,
+      city: options.city ?? null,
       user_agent: options.userAgent ?? null,
       last_seen_at: new Date(),
     })

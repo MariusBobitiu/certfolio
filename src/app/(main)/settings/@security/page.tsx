@@ -7,7 +7,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { ChangePasswordDialog, MfaCard, RecoveryCodesCard, RevokeAllSessionsButton, RevokeSessionButton } from "./security-form"
 import { Badge } from "@/components/ui/badge"
-import { formatDate, parseUserAgent } from "@/lib/utils"
+import { formatDate, formatSessionLocation, parseUserAgent } from "@/lib/utils"
 
 export default async function SecuritySlot() {
   const session = await getCurrentSession()
@@ -46,6 +46,7 @@ export default async function SecuritySlot() {
         <div className="space-y-2">
           {sessions.map((sess) => {
             const isCurrent = sess.id === session.session.id
+            const location = formatSessionLocation(sess.city)
 
             return (
               <div
@@ -57,6 +58,9 @@ export default async function SecuritySlot() {
                     <p className="text-sm font-medium">
                       {parseUserAgent(sess.user_agent)}
                     </p>
+                    {location && (
+                      <p className="text-xs text-muted-foreground">{location}</p>
+                    )}
                     {isCurrent && (
                       <Badge variant="secondary" className="text-xs">
                         Current

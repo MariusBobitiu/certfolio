@@ -41,10 +41,11 @@ export const signInAction = actionClient
       return { failure: "Invalid email or password" }
     }
 
-    const { ipAddress, userAgent } = await getRequestSessionContext()
+    const { ipAddress, city, userAgent } = await getRequestSessionContext()
     const { token } = await createSession(user.id, {
       rememberMe,
       ipAddress,
+      city,
       userAgent,
     })
 

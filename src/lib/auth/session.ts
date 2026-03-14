@@ -78,7 +78,12 @@ export async function getRequestSessionContext() {
   const requestHeaders = await headers()
   const forwardedFor = requestHeaders.get("x-forwarded-for")
   const ipAddress = forwardedFor?.split(",")[0]?.trim() ?? null
+  const city =
+    requestHeaders.get("x-vercel-ip-city") ??
+    requestHeaders.get("cf-ipcity") ??
+    requestHeaders.get("x-appengine-city") ??
+    null
   const userAgent = requestHeaders.get("user-agent")
 
-  return { ipAddress, userAgent }
+  return { ipAddress, city, userAgent }
 }

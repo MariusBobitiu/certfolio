@@ -93,6 +93,7 @@ export const sessionsTable = pgTable(
       mode: "date",
     }),
     ip_address: text("ip_address"),
+    city: text("city"),
     user_agent: text("user_agent"),
   },
   (sessions) => [
