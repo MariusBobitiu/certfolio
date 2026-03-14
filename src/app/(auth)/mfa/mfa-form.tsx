@@ -51,6 +51,8 @@ export function MfaForm({
     handleSubmit,
     setError,
     clearErrors,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<
     z.input<typeof verifyMfaCodeSchema>,
@@ -63,6 +65,7 @@ export function MfaForm({
 
   const verifyAction = useAction(verifyMfaCodeAction)
   const resendAction = useAction(resendMfaCodeAction)
+  const rememberDevice = watch("rememberDevice")
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -165,7 +168,15 @@ export function MfaForm({
             <FieldError errors={[errors.root]} />
 
             <Field orientation="horizontal" className="max-w-fit items-center gap-2">
-              <Checkbox id="rememberDeviceEmail" {...register("rememberDevice")} />
+              <Checkbox
+                id="rememberDeviceEmail"
+                checked={rememberDevice}
+                onCheckedChange={(checked) =>
+                  setValue("rememberDevice", checked === true, {
+                    shouldDirty: true,
+                  })
+                }
+              />
               <FieldLabel htmlFor="rememberDeviceEmail" className="mt-0.5">
                 Remember this device for 30 days
               </FieldLabel>
@@ -244,7 +255,15 @@ export function MfaForm({
             <FieldError errors={[errors.root]} />
 
             <Field orientation="horizontal" className="max-w-fit items-center gap-2">
-              <Checkbox id="rememberDeviceTotp" {...register("rememberDevice")} />
+              <Checkbox
+                id="rememberDeviceTotp"
+                checked={rememberDevice}
+                onCheckedChange={(checked) =>
+                  setValue("rememberDevice", checked === true, {
+                    shouldDirty: true,
+                  })
+                }
+              />
               <FieldLabel htmlFor="rememberDeviceTotp" className="mt-0.5">
                 Remember this device for 30 days
               </FieldLabel>
