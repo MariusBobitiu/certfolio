@@ -44,12 +44,26 @@ export const changePasswordAction = actionClient
 
     const newHash = await hash(newPassword)
 
-    await db
-      .update(UsersTable)
-      .set({ password_hash: newHash, updated_at: new Date() })
-      .where(eq(UsersTable.id, session.user.id))
+    await db.transaction(async (tx) => {
+      await tx
+        .update(UsersTable)
+        .set({ password_hash: newHash, updated_at: new Date() })
+        .where(eq(UsersTable.id, session.user.id))
 
-    return { success: "Password changed" }
+      await tx
+        .update(SessionsTable)
+        .set({ revoked_at: new Date() })
+        .where(
+          and(
+            eq(SessionsTable.user_id, session.user.id),
+            ne(SessionsTable.id, session.session.id),
+            isNull(SessionsTable.revoked_at),
+            gt(SessionsTable.expires_at, new Date())
+          )
+        )
+    })
+
+    return { success: "Password changed and other sessions revoked" }
   })
 
 export const revokeSessionAction = actionClient
