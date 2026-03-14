@@ -16,7 +16,6 @@ import {
   KeyRound,
   Lock,
   ShieldCheck,
-  Smartphone,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -41,6 +40,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Spinner } from "@/components/ui/spinner"
 
 import {
@@ -950,6 +950,7 @@ function RecoveryCodesCard({
   const [password, setPassword] = useState("")
   const [passwordRequired, setPasswordRequired] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [regenerationConfirmed, setRegenerationConfirmed] = useState(false)
   const regenerateRecoveryCodes = useAction(regenerateRecoveryCodesAction)
   const router = useRouter()
 
@@ -986,6 +987,7 @@ function RecoveryCodesCard({
       setPasswordRequired(false)
       setPasswordError(null)
       setPassword("")
+      setRegenerationConfirmed(false)
       setNewCodes(res.data.recoveryCodes ?? [])
       toast.success(res.data.success ?? "Recovery codes generated")
       router.refresh()
@@ -1038,6 +1040,7 @@ function RecoveryCodesCard({
       setPassword("")
       setPasswordRequired(false)
       setPasswordError(null)
+      setRegenerationConfirmed(false)
     }
   }
 
@@ -1085,7 +1088,7 @@ function RecoveryCodesCard({
           </Button>
         </DialogTrigger>
       </div>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Recovery Codes</DialogTitle>
           <DialogDescription>
@@ -1100,6 +1103,21 @@ function RecoveryCodesCard({
               ? `${remaining} recovery code${remaining === 1 ? "" : "s"} remaining. Generating a new set invalidates all previous codes.`
               : "Generate a set of backup codes and store them somewhere safe."}
           </div>
+
+          {enabled ? (
+            <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+              <Checkbox
+                checked={regenerationConfirmed}
+                onCheckedChange={(checked) =>
+                  setRegenerationConfirmed(checked === true)
+                }
+              />
+              <span className="text-muted-foreground">
+                I understand that generating a new set will permanently
+                invalidate all previously saved recovery codes.
+              </span>
+            </label>
+          ) : null}
 
           {passwordRequired ? (
             <div className="space-y-2 rounded-lg border p-3">
@@ -1164,7 +1182,10 @@ function RecoveryCodesCard({
           <DialogFooter className="sm:justify-start">
             <Button
               onClick={handleGenerateCodes}
-              disabled={regenerateRecoveryCodes.isPending}
+              disabled={
+                regenerateRecoveryCodes.isPending ||
+                (enabled && !regenerationConfirmed)
+              }
             >
               {regenerateRecoveryCodes.isPending && (
                 <Spinner className="size-4" />
