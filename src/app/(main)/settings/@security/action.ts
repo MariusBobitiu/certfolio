@@ -321,6 +321,9 @@ export async function getRecentSecurityActivity(userId: string) {
     password_reset: "Password reset",
     sign_in_otp: "Signed in via OTP",
     mfa_enrollment: "MFA method enrolled",
+    mfa_disabled: "MFA method disabled",
+    recovery_code_used: "Signed in with a recovery code",
+    recovery_codes_regenerated: "Recovery codes regenerated",
   }
 
   const MFA_METHOD_LABELS: Record<string, string> = {
@@ -342,7 +345,11 @@ export async function getRecentSecurityActivity(userId: string) {
                 MFA_METHOD_LABELS[verification.method] ?? verification.method
               }`
             : "MFA challenge started"
-          : (LABEL_MAP[verification.type] ?? verification.type),
+          : verification.type === "mfa_enrollment"
+            ? `${MFA_METHOD_LABELS[verification.method] ?? verification.method} enabled`
+            : verification.type === "mfa_disabled"
+              ? `${MFA_METHOD_LABELS[verification.method] ?? verification.method} disabled`
+              : (LABEL_MAP[verification.type] ?? verification.type),
       timestamp: verification.consumed_at ?? verification.created_at,
     })),
     ...recentSessions.map((s) => ({

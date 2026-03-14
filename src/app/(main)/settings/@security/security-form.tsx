@@ -1044,6 +1044,16 @@ function RecoveryCodesCard({
     }
   }
 
+  const handleDone = () => {
+    setNewCodes([])
+    setCodesCopied(false)
+    setPassword("")
+    setPasswordRequired(false)
+    setPasswordError(null)
+    setRegenerationConfirmed(false)
+    setOpen(false)
+  }
+
   if (!totpEnabled) {
     return (
       <Tooltip>
@@ -1099,12 +1109,14 @@ function RecoveryCodesCard({
 
         <div className="space-y-4">
           <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
-            {enabled
-              ? `${remaining} recovery code${remaining === 1 ? "" : "s"} remaining. Generating a new set invalidates all previous codes.`
-              : "Generate a set of backup codes and store them somewhere safe."}
+            {newCodes.length > 0
+              ? "These are your new recovery codes. Save them somewhere safe before closing this dialog."
+              : enabled
+                ? `${remaining} recovery code${remaining === 1 ? "" : "s"} remaining. Generating a new set invalidates all previous codes.`
+                : "Generate a set of backup codes and store them somewhere safe."}
           </div>
 
-          {enabled ? (
+          {enabled && newCodes.length === 0 ? (
             <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
               <Checkbox
                 checked={regenerationConfirmed}
@@ -1119,7 +1131,7 @@ function RecoveryCodesCard({
             </label>
           ) : null}
 
-          {passwordRequired ? (
+          {passwordRequired && newCodes.length === 0 ? (
             <div className="space-y-2 rounded-lg border p-3">
               <Field>
                 <FieldLabel htmlFor="recoveryCodesPassword">
@@ -1180,18 +1192,26 @@ function RecoveryCodesCard({
           ) : null}
 
           <DialogFooter className="sm:justify-start">
-            <Button
-              onClick={handleGenerateCodes}
-              disabled={
-                regenerateRecoveryCodes.isPending ||
-                (enabled && !regenerationConfirmed)
-              }
-            >
-              {regenerateRecoveryCodes.isPending && (
-                <Spinner className="size-4" />
-              )}
-              {enabled ? "Regenerate recovery codes" : "Generate recovery codes"}
-            </Button>
+            {newCodes.length > 0 ? (
+              <Button type="button" onClick={handleDone}>
+                Done
+              </Button>
+            ) : (
+              <Button
+                onClick={handleGenerateCodes}
+                disabled={
+                  regenerateRecoveryCodes.isPending ||
+                  (enabled && !regenerationConfirmed)
+                }
+              >
+                {regenerateRecoveryCodes.isPending && (
+                  <Spinner className="size-4" />
+                )}
+                {enabled
+                  ? "Regenerate recovery codes"
+                  : "Generate recovery codes"}
+              </Button>
+            )}
           </DialogFooter>
         </div>
       </DialogContent>

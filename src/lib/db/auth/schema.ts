@@ -23,6 +23,9 @@ export const authVerificationPurposeEnum = pgEnum("auth_verification_purpose", [
   "sign_in_otp",
   "mfa_challenge",
   "mfa_enrollment",
+  "mfa_disabled",
+  "recovery_code_used",
+  "recovery_codes_regenerated",
 ])
 
 export const usersTable = pgTable(

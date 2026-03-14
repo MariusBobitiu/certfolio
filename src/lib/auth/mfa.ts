@@ -84,6 +84,29 @@ type IssueTotpMfaChallengeParams = {
 }
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+async function logAuthSecurityEvent(params: {
+  tx: DbTransaction
+  userId: string
+  purpose:
+    | "mfa_enrollment"
+    | "mfa_disabled"
+    | "recovery_code_used"
+    | "recovery_codes_regenerated"
+  method: "email" | "totp"
+  metadata?: Record<string, unknown>
+}) {
+  const now = new Date()
+
+  await params.tx.insert(VerificationsTable).values({
+    user_id: params.userId,
+    purpose: params.purpose,
+    method: params.method,
+    expires_at: now,
+    consumed_at: now,
+    metadata: params.metadata ?? {},
+  })
+}
 function getBaseUrl() {
   return (
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -544,12 +567,11 @@ export async function enableEmailMfaMethod(userId: string) {
       })
     }
 
-    await tx.insert(VerificationsTable).values({
-      user_id: userId,
+    await logAuthSecurityEvent({
+      tx,
+      userId,
       purpose: "mfa_enrollment",
       method: "email",
-      expires_at: now,
-      consumed_at: now,
       metadata: { enrolled: true },
     })
   })
@@ -573,6 +595,14 @@ export async function disableEmailMfaMethod(userId: string) {
           isNull(UserMfaMethodsTable.disabled_at)
         )
       )
+
+    await logAuthSecurityEvent({
+      tx,
+      userId,
+      purpose: "mfa_disabled",
+      method: "email",
+      metadata: { disabled: true },
+    })
 
     await promoteLatestActiveMethod(tx, userId)
   })
@@ -737,12 +767,11 @@ export async function confirmTotpEnrollment(params: {
       })
       .where(eq(UserMfaMethodsTable.id, method.id))
 
-    await tx.insert(VerificationsTable).values({
-      user_id: params.userId,
+    await logAuthSecurityEvent({
+      tx,
+      userId: params.userId,
       purpose: "mfa_enrollment",
       method: "totp",
-      expires_at: now,
-      consumed_at: now,
       metadata: { enrolled: true },
     })
 
@@ -781,6 +810,14 @@ export async function disableTotpMfaMethod(userId: string) {
       .delete(UserRecoveryCodesTable)
       .where(eq(UserRecoveryCodesTable.user_id, userId))
 
+    await logAuthSecurityEvent({
+      tx,
+      userId,
+      purpose: "mfa_disabled",
+      method: "totp",
+      metadata: { disabled: true },
+    })
+
     await promoteLatestActiveMethod(tx, userId)
   })
 }
@@ -808,6 +845,14 @@ async function generateRecoveryCodesInTransaction(
       code_hash: codeHash,
     }))
   )
+
+  await logAuthSecurityEvent({
+    tx,
+    userId,
+    purpose: "recovery_codes_regenerated",
+    method: "totp",
+    metadata: { count: plainCodes.length },
+  })
 
   return plainCodes
 }
@@ -946,6 +991,14 @@ export async function consumeRecoveryCodeMfaChallenge(params: {
         },
       })
       .where(eq(VerificationsTable.id, challenge.id))
+
+    await logAuthSecurityEvent({
+      tx,
+      userId: params.userId,
+      purpose: "recovery_code_used",
+      method: "totp",
+      metadata: { verificationId: params.verificationId },
+    })
 
     return {
       success: true as const,
