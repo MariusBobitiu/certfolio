@@ -2,6 +2,7 @@ import { Geist_Mono, Raleway } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils";
 import { Metadata } from "next";
 
@@ -41,7 +42,9 @@ export default async function RootLayout({
           defaultTheme="system"
           enableSystem
           storageKey="theme"
-        >{children}</ThemeProvider>
+        >
+          <TooltipProvider>{children}</TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

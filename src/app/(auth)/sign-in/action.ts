@@ -27,6 +27,14 @@ export const signInAction = actionClient
       return { failure: "Invalid email or password" }
     }
 
+    if (user.deleted_at) {
+      return { failure: "This account has been deleted" }
+    }
+
+    if (user.archived_at) {
+      return { failure: "This account has been deactivated. Contact support to reactivate." }
+    }
+
     const passwordValid = await verify(user.password_hash, password)
 
     if (!passwordValid) {

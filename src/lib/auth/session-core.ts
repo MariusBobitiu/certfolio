@@ -65,6 +65,13 @@ export async function revokeSession(token: string) {
     .where(eq(SessionsTable.session_token_hash, tokenHash))
 }
 
+export async function revokeSessionById(id: string) {
+  await db
+    .update(SessionsTable)
+    .set({ revoked_at: new Date() })
+    .where(eq(SessionsTable.id, id))
+}
+
 export async function validateSessionToken(token: string) {
   const tokenHash = hashSessionToken(token)
 

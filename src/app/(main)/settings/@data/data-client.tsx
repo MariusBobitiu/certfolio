@@ -1,0 +1,242 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useAction } from "next-safe-action/hooks"
+import { toast } from "sonner"
+import { AlertTriangle, Download } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/ui/spinner"
+
+import {
+  exportProfileAction,
+  exportCredentialsAction,
+  deactivateAccountAction,
+  deleteAccountAction,
+} from "./action"
+
+function downloadFile(data: string, filename: string) {
+  const blob = new Blob([data], { type: "text/plain;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function ExportSection() {
+  const {
+    execute: exportProfile,
+    isPending: profilePending,
+    result: profileResult,
+  } = useAction(exportProfileAction)
+  const {
+    execute: exportCredentials,
+    isPending: credentialsPending,
+    result: credentialsResult,
+  } = useAction(exportCredentialsAction)
+
+  useEffect(() => {
+    if (profileResult.data?.data) {
+      downloadFile(profileResult.data.data, profileResult.data.filename)
+      toast.success("Profile data exported")
+    }
+    if (profileResult.data?.failure) {
+      toast.error(profileResult.data.failure)
+    }
+  }, [profileResult])
+
+  useEffect(() => {
+    if (credentialsResult.data?.data !== undefined) {
+      downloadFile(credentialsResult.data.data, credentialsResult.data.filename)
+      toast.success("Credentials exported")
+    }
+    if (credentialsResult.data?.failure) {
+      toast.error(credentialsResult.data.failure)
+    }
+  }, [credentialsResult])
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-medium">Export Data</h3>
+        <p className="text-sm text-muted-foreground">
+          Download a copy of your profile data or credentials.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <Button
+          variant="outline"
+          onClick={() => exportProfile({ format: "json" })}
+          disabled={profilePending}
+        >
+          {profilePending ? (
+            <Spinner className="size-4" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          Export Profile (JSON)
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => exportProfile({ format: "csv" })}
+          disabled={profilePending}
+        >
+          {profilePending ? (
+            <Spinner className="size-4" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          Export Profile (CSV)
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => exportCredentials({ format: "json" })}
+          disabled={credentialsPending}
+        >
+          {credentialsPending ? (
+            <Spinner className="size-4" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          Export Credentials (JSON)
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function DeactivateSection() {
+  const [confirming, setConfirming] = useState(false)
+  const { execute, isPending } = useAction(deactivateAccountAction)
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-medium text-amber-600 dark:text-amber-400">
+          Deactivate Account
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Temporarily disable your account. You can reactivate it later by
+          contacting support.
+        </p>
+      </div>
+      {!confirming ? (
+        <Button variant="outline" onClick={() => setConfirming(true)}>
+          <AlertTriangle className="size-4" />
+          Deactivate Account
+        </Button>
+      ) : (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          <p className="text-sm font-medium">
+            Are you sure you want to deactivate your account?
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Your profile and credentials will be hidden. You will be signed out
+            immediately.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              onClick={() => execute()}
+              disabled={isPending}
+            >
+              {isPending && <Spinner className="size-4" />}
+              Confirm Deactivation
+            </Button>
+            <Button variant="outline" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DeleteSection({ userEmail }: { userEmail: string }) {
+  const [confirming, setConfirming] = useState(false)
+  const [confirmEmail, setConfirmEmail] = useState("")
+  const { execute, isPending, result } = useAction(deleteAccountAction)
+
+  useEffect(() => {
+    if (result.data?.failure) {
+      toast.error(result.data.failure)
+    }
+  }, [result])
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-medium text-destructive">Delete Account</h3>
+        <p className="text-sm text-muted-foreground">
+          Permanently delete your account. This action cannot be undone.
+        </p>
+      </div>
+      {!confirming ? (
+        <Button variant="destructive" onClick={() => setConfirming(true)}>
+          <AlertTriangle className="size-4" />
+          Delete Account
+        </Button>
+      ) : (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+          <p className="text-sm font-medium">
+            This action is irreversible. Type your email to confirm.
+          </p>
+          <div className="max-w-sm">
+            <Label htmlFor="confirm-email">Confirm email address</Label>
+            <Input
+              id="confirm-email"
+              type="email"
+              placeholder={userEmail}
+              value={confirmEmail}
+              onChange={(e) => setConfirmEmail(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              onClick={() => execute({ confirmEmail })}
+              disabled={isPending || confirmEmail !== userEmail}
+            >
+              {isPending && <Spinner className="size-4" />}
+              Permanently Delete
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirming(false)
+                setConfirmEmail("")
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function DataClient({ userEmail }: { userEmail: string }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">Data & Account</h2>
+        <p className="text-sm text-muted-foreground">
+          Export your data, deactivate, or delete your account.
+        </p>
+      </div>
+
+      <ExportSection />
+      <Separator />
+      <DeactivateSection />
+      <Separator />
+      <DeleteSection userEmail={userEmail} />
+    </div>
+  )
+}

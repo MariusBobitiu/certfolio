@@ -22,7 +22,8 @@ import { AuthSession } from '@/lib/auth/session-core'
 
 const navItems = [
 	{ href: '/dashboard', label: 'Dashboard' },
-	{ href: '/account', label: 'Account' },
+	{ href: '/credentials', label: 'Credentials' },
+	{ href: '/projects', label: 'Projects' },
 ] as const
 
 export function Navbar({ session }: { session: AuthSession }) {
@@ -34,7 +35,7 @@ export function Navbar({ session }: { session: AuthSession }) {
 		<nav className='fixed top-0 left-0 right-0 z-50 px-4 py-4 sm:px-6 sm:py-5'>
 			<div className='mx-auto max-w-7xl'>
 				{/* Backdrop blur container */}
-				<div className='relative flex items-center justify-between rounded-full border border-border/70 bg-background/70 px-6 py-3 shadow-lg dark:shadow-white/2 backdrop-blur-xl supports-backdrop-filter:bg-background/55'>
+				<div className='relative flex items-center justify-between rounded-full border border-border/70 bg-background/70 px-6 py-3 shadow-lg dark:shadow-white/2 backdrop-blur-sm supports-backdrop-filter:bg-background/35'>
 					{/* Logo/Brand */}
 					<Link href='/dashboard' className='flex items-center gap-2 font-semibold text-lg hover:opacity-80 transition-opacity'>
 						<div className='flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground'>
@@ -93,7 +94,7 @@ export function Navbar({ session }: { session: AuthSession }) {
 							<DropdownMenuSeparator />
 
 							<DropdownMenuItem asChild>
-								<Link href='/account' className='cursor-pointer'>
+								<Link href='/profile' className='cursor-pointer'>
 									<User className='mr-2 h-4 w-4' />
 									Profile
 								</Link>
