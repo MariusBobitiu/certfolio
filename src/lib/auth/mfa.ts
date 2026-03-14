@@ -25,29 +25,12 @@ import {
 import { hash as hashSecret, verify as verifySecret } from "@node-rs/argon2"
 import { Resend } from "resend"
 
-import {
-  BASE32_ALPHABET,
-  EMAIL_MFA_MAX_ATTEMPTS,
-  EMAIL_MFA_RESEND_INTERVAL_MS,
-  MFA_CHALLENGE_TTL_MS,
-  MFA_PENDING_COOKIE_NAME,
-  RECOVERY_CODE_ALPHABET,
-  RECOVERY_CODE_COUNT,
-  RECOVERY_CODE_SEGMENT_LENGTH,
-  TOTP_ALGORITHM,
-  TOTP_DIGITS,
-  TOTP_ENCRYPTION_ALGORITHM,
-  TOTP_ENCRYPTION_VERSION,
-  TOTP_ISSUER,
-  TOTP_MFA_MAX_ATTEMPTS,
-  TOTP_PERIOD_SECONDS,
-  TOTP_SECRET_BYTES,
-  TOTP_WINDOW,
-} from "@/lib/consts"
+import { MFA_CONFIG } from "@/lib/consts"
 import {
   db,
   UserMfaMethodsTable,
   UserRecoveryCodesTable,
+  TrustedMfaDevicesTable,
   UsersTable,
   VerificationsTable,
 } from "@/lib/db/drizzle"
@@ -56,6 +39,11 @@ type PendingMfaState = {
   method: "email" | "totp"
   userId: string
   verificationId: string
+}
+
+type TrustedMfaDeviceCookie = {
+  selector: string
+  token: string
 }
 
 type MfaChallengeMetadata = {
@@ -145,6 +133,10 @@ function hashVerificationCode(code: string) {
   return createHash("sha256").update(code).digest("hex")
 }
 
+function hashTrustedMfaDeviceToken(token: string) {
+  return createHash("sha256").update(token).digest("hex")
+}
+
 function generateVerificationCode() {
   return randomInt(0, 1_000_000).toString().padStart(6, "0")
 }
@@ -156,19 +148,23 @@ function normalizeRecoveryCode(code: string) {
 function generateRecoveryCode() {
   let output = ""
 
-  for (let index = 0; index < RECOVERY_CODE_SEGMENT_LENGTH * 2; index += 1) {
+  for (let index = 0; index < MFA_CONFIG.RECOVERY_CODES.SEGMENT_LENGTH * 2; index += 1) {
     output +=
-      RECOVERY_CODE_ALPHABET[
-        randomInt(0, RECOVERY_CODE_ALPHABET.length)
+      MFA_CONFIG.RECOVERY_CODES.ALPHABET[
+        randomInt(0, MFA_CONFIG.RECOVERY_CODES.ALPHABET.length)
       ]
   }
 
-  return `${output.slice(0, RECOVERY_CODE_SEGMENT_LENGTH)}-${output.slice(
-    RECOVERY_CODE_SEGMENT_LENGTH
+  return `${output.slice(0, MFA_CONFIG.RECOVERY_CODES.SEGMENT_LENGTH)}-${output.slice(
+    MFA_CONFIG.RECOVERY_CODES.SEGMENT_LENGTH
   )}`
 }
 
 function encodePendingMfaState(state: PendingMfaState) {
+  return Buffer.from(JSON.stringify(state)).toString("base64url")
+}
+
+function encodeTrustedMfaDeviceCookie(state: TrustedMfaDeviceCookie) {
   return Buffer.from(JSON.stringify(state)).toString("base64url")
 }
 
@@ -182,6 +178,27 @@ function decodePendingMfaState(value: string): PendingMfaState | null {
       (parsed.method !== "email" && parsed.method !== "totp") ||
       typeof parsed.userId !== "string" ||
       typeof parsed.verificationId !== "string"
+    ) {
+      return null
+    }
+
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function decodeTrustedMfaDeviceCookie(
+  value: string
+): TrustedMfaDeviceCookie | null {
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"))
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      typeof parsed.selector !== "string" ||
+      typeof parsed.token !== "string"
     ) {
       return null
     }
@@ -218,13 +235,13 @@ function base32Encode(buffer: Buffer) {
     bits += 8
 
     while (bits >= 5) {
-      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31]
+      output += MFA_CONFIG.TOTP.BASE32_ALPHABET[(value >>> (bits - 5)) & 31]
       bits -= 5
     }
   }
 
   if (bits > 0) {
-    output += BASE32_ALPHABET[(value << (5 - bits)) & 31]
+    output += MFA_CONFIG.TOTP.BASE32_ALPHABET[(value << (5 - bits)) & 31]
   }
 
   return output
@@ -242,7 +259,7 @@ function base32Decode(input: string) {
   const output: number[] = []
 
   for (const char of normalized) {
-    const index = BASE32_ALPHABET.indexOf(char)
+    const index = MFA_CONFIG.TOTP.BASE32_ALPHABET.indexOf(char)
 
     if (index === -1) {
       throw new Error("Invalid TOTP secret encoding.")
@@ -279,7 +296,7 @@ function generateTotpCode(params: {
   counterBuffer.writeUInt32BE(low, 4)
 
   const digest = createHmac(
-    params.algorithm?.toLowerCase() ?? TOTP_ALGORITHM.toLowerCase(),
+    params.algorithm?.toLowerCase() ?? MFA_CONFIG.TOTP.ALGORITHM.toLowerCase(),
     secret
   )
     .update(counterBuffer)
@@ -291,9 +308,9 @@ function generateTotpCode(params: {
     ((digest[offset + 2] & 0xff) << 8) |
     (digest[offset + 3] & 0xff)
 
-  return (binaryCode % 10 ** (params.digits ?? TOTP_DIGITS))
+  return (binaryCode % 10 ** (params.digits ?? MFA_CONFIG.TOTP.DIGITS))
     .toString()
-    .padStart(params.digits ?? TOTP_DIGITS, "0")
+    .padStart(params.digits ?? MFA_CONFIG.TOTP.DIGITS, "0")
 }
 
 function codesEqual(left: string, right: string) {
@@ -310,7 +327,7 @@ function codesEqual(left: string, right: string) {
 function encryptTotpSecret(secret: string, userId: string) {
   const key = getTotpEncryptionKey()
   const iv = randomBytes(12)
-  const cipher = createCipheriv(TOTP_ENCRYPTION_ALGORITHM, key, iv)
+  const cipher = createCipheriv(MFA_CONFIG.TOTP.ENCRYPTION_ALGORITHM, key, iv)
 
   cipher.setAAD(Buffer.from(`${userId}:totp`))
 
@@ -324,7 +341,7 @@ function encryptTotpSecret(secret: string, userId: string) {
     ciphertext: ciphertext.toString("base64"),
     iv: iv.toString("base64"),
     authTag: authTag.toString("base64"),
-    version: TOTP_ENCRYPTION_VERSION,
+    version: MFA_CONFIG.TOTP.ENCRYPTION_VERSION,
   }
 }
 
@@ -340,7 +357,7 @@ function decryptTotpSecret(params: {
 
   const key = getTotpEncryptionKey()
   const decipher = createDecipheriv(
-    TOTP_ENCRYPTION_ALGORITHM,
+    MFA_CONFIG.TOTP.ENCRYPTION_ALGORITHM,
     key,
     Buffer.from(params.iv, "base64")
   )
@@ -364,7 +381,7 @@ function findValidTotpCounter(params: {
 }) {
   const nowCounter = getTotpCounterForTime(Date.now(), params.periodSeconds)
 
-  for (let offset = -TOTP_WINDOW; offset <= TOTP_WINDOW; offset += 1) {
+  for (let offset = -MFA_CONFIG.TOTP.WINDOW; offset <= MFA_CONFIG.TOTP.WINDOW; offset += 1) {
     const counter = nowCounter + offset
 
     if (counter < 0) {
@@ -631,18 +648,18 @@ export async function beginTotpEnrollment(params: {
     }
   }
 
-  const secret = base32Encode(randomBytes(TOTP_SECRET_BYTES))
+  const secret = base32Encode(randomBytes(MFA_CONFIG.TOTP.SECRET_BYTES))
   const encryptedSecret = encryptTotpSecret(secret, params.userId)
   const accountName = getTotpAccountName(params.email)
   const otpauthUrl =
     `otpauth://totp/${encodeURIComponent(
-      `${TOTP_ISSUER}:${accountName}`
+      `${MFA_CONFIG.TOTP.ISSUER}:${accountName}`
     )}` +
     `?secret=${encodeURIComponent(secret)}` +
-    `&issuer=${encodeURIComponent(TOTP_ISSUER)}` +
-    `&algorithm=${encodeURIComponent(TOTP_ALGORITHM)}` +
-    `&digits=${TOTP_DIGITS}` +
-    `&period=${TOTP_PERIOD_SECONDS}`
+    `&issuer=${encodeURIComponent(MFA_CONFIG.TOTP.ISSUER)}` +
+    `&algorithm=${encodeURIComponent(MFA_CONFIG.TOTP.ALGORITHM)}` +
+    `&digits=${MFA_CONFIG.TOTP.DIGITS}` +
+    `&period=${MFA_CONFIG.TOTP.PERIOD_SECONDS}`
 
   if (existing) {
     await db
@@ -653,9 +670,9 @@ export async function beginTotpEnrollment(params: {
         secret_iv: encryptedSecret.iv,
         secret_auth_tag: encryptedSecret.authTag,
         secret_version: encryptedSecret.version,
-        algorithm: TOTP_ALGORITHM,
-        digits: TOTP_DIGITS,
-        period_seconds: TOTP_PERIOD_SECONDS,
+        algorithm: MFA_CONFIG.TOTP.ALGORITHM,
+        digits: MFA_CONFIG.TOTP.DIGITS,
+        period_seconds: MFA_CONFIG.TOTP.PERIOD_SECONDS,
         enabled_at: null,
         verified_at: null,
         last_used_at: null,
@@ -674,9 +691,9 @@ export async function beginTotpEnrollment(params: {
       secret_iv: encryptedSecret.iv,
       secret_auth_tag: encryptedSecret.authTag,
       secret_version: encryptedSecret.version,
-      algorithm: TOTP_ALGORITHM,
-      digits: TOTP_DIGITS,
-      period_seconds: TOTP_PERIOD_SECONDS,
+      algorithm: MFA_CONFIG.TOTP.ALGORITHM,
+      digits: MFA_CONFIG.TOTP.DIGITS,
+      period_seconds: MFA_CONFIG.TOTP.PERIOD_SECONDS,
     })
   }
 
@@ -684,7 +701,7 @@ export async function beginTotpEnrollment(params: {
     success: true as const,
     secret,
     otpauthUrl,
-    issuer: TOTP_ISSUER,
+    issuer: MFA_CONFIG.TOTP.ISSUER,
     accountName,
   }
 }
@@ -827,7 +844,7 @@ async function generateRecoveryCodesInTransaction(
   userId: string
 ) {
   const batchId = randomUUID()
-  const plainCodes = Array.from({ length: RECOVERY_CODE_COUNT }, () =>
+  const plainCodes = Array.from({ length: MFA_CONFIG.RECOVERY_CODES.COUNT }, () =>
     generateRecoveryCode()
   )
   const hashedCodes = await Promise.all(
@@ -939,14 +956,14 @@ export async function consumeRecoveryCodeMfaChallenge(params: {
         .update(VerificationsTable)
         .set({
           attempts: nextAttempts,
-          consumed_at: nextAttempts >= TOTP_MFA_MAX_ATTEMPTS ? now : null,
+          consumed_at: nextAttempts >= MFA_CONFIG.TOTP.MAX_ATTEMPTS ? now : null,
         })
         .where(eq(VerificationsTable.id, challenge.id))
 
       return {
         success: false as const,
         failure:
-          nextAttempts >= TOTP_MFA_MAX_ATTEMPTS
+          nextAttempts >= MFA_CONFIG.TOTP.MAX_ATTEMPTS
             ? "Too many incorrect attempts. Sign in again."
             : "That recovery code is incorrect or already used.",
       }
@@ -1030,21 +1047,21 @@ export async function issueEmailMfaChallenge(
   const canResend =
     !existingChallenge ||
     now.getTime() - existingChallenge.last_sent_at.getTime() >=
-      EMAIL_MFA_RESEND_INTERVAL_MS
+      MFA_CONFIG.EMAIL.RESEND_INTERVAL_MS
 
   if (!canResend) {
     return {
       verificationId: existingChallenge.id,
       sent: false,
       resendAvailableAt: new Date(
-        existingChallenge.last_sent_at.getTime() + EMAIL_MFA_RESEND_INTERVAL_MS
+        existingChallenge.last_sent_at.getTime() + MFA_CONFIG.EMAIL.RESEND_INTERVAL_MS
       ),
     }
   }
 
   const code = generateVerificationCode()
   const codeHash = hashVerificationCode(code)
-  const expiresAt = new Date(now.getTime() + MFA_CHALLENGE_TTL_MS)
+  const expiresAt = new Date(now.getTime() + MFA_CONFIG.CHALLENGE_TTL_MS)
 
   let verificationId = existingChallenge?.id
 
@@ -1087,7 +1104,7 @@ export async function issueEmailMfaChallenge(
   return {
     verificationId: verificationId!,
     sent: true,
-    resendAvailableAt: new Date(now.getTime() + EMAIL_MFA_RESEND_INTERVAL_MS),
+    resendAvailableAt: new Date(now.getTime() + MFA_CONFIG.EMAIL.RESEND_INTERVAL_MS),
   }
 }
 
@@ -1095,7 +1112,7 @@ export async function issueTotpMfaChallenge(
   params: IssueTotpMfaChallengeParams
 ) {
   const now = new Date()
-  const expiresAt = new Date(now.getTime() + MFA_CHALLENGE_TTL_MS)
+  const expiresAt = new Date(now.getTime() + MFA_CONFIG.CHALLENGE_TTL_MS)
   const metadata = buildTotpChallengeMetadata(params)
 
   const [existingChallenge] = await db
@@ -1178,14 +1195,14 @@ export async function verifyEmailMfaChallenge(params: {
       .update(VerificationsTable)
       .set({
         attempts: nextAttempts,
-        consumed_at: nextAttempts >= EMAIL_MFA_MAX_ATTEMPTS ? now : null,
+        consumed_at: nextAttempts >= MFA_CONFIG.EMAIL.MAX_ATTEMPTS ? now : null,
       })
       .where(eq(VerificationsTable.id, challenge.id))
 
     return {
       success: false as const,
       failure:
-        nextAttempts >= EMAIL_MFA_MAX_ATTEMPTS
+        nextAttempts >= MFA_CONFIG.EMAIL.MAX_ATTEMPTS
           ? "Too many incorrect attempts. Request a new code."
           : "The code you entered is incorrect.",
     }
@@ -1284,14 +1301,14 @@ export async function verifyTotpMfaChallenge(params: {
         .update(VerificationsTable)
         .set({
           attempts: nextAttempts,
-          consumed_at: nextAttempts >= TOTP_MFA_MAX_ATTEMPTS ? now : null,
+          consumed_at: nextAttempts >= MFA_CONFIG.TOTP.MAX_ATTEMPTS ? now : null,
         })
         .where(eq(VerificationsTable.id, challenge.id))
 
       return {
         success: false as const,
         failure:
-          nextAttempts >= TOTP_MFA_MAX_ATTEMPTS
+          nextAttempts >= MFA_CONFIG.TOTP.MAX_ATTEMPTS
             ? "Too many incorrect attempts. Sign in again."
             : "The code you entered is incorrect or already used.",
       }
@@ -1337,18 +1354,18 @@ export async function verifyTotpMfaChallenge(params: {
 export async function setPendingMfaCookie(state: PendingMfaState) {
   const cookieStore = await cookies()
 
-  cookieStore.set(MFA_PENDING_COOKIE_NAME, encodePendingMfaState(state), {
+  cookieStore.set(MFA_CONFIG.PENDING_COOKIE_NAME, encodePendingMfaState(state), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: Math.floor(MFA_CHALLENGE_TTL_MS / 1000),
+    maxAge: Math.floor(MFA_CONFIG.CHALLENGE_TTL_MS / 1000),
   })
 }
 
 export async function getPendingMfaCookie() {
   const cookieStore = await cookies()
-  const cookie = cookieStore.get(MFA_PENDING_COOKIE_NAME)
+  const cookie = cookieStore.get(MFA_CONFIG.PENDING_COOKIE_NAME)
 
   if (!cookie?.value) {
     return null
@@ -1360,13 +1377,116 @@ export async function getPendingMfaCookie() {
 export async function clearPendingMfaCookie() {
   const cookieStore = await cookies()
 
-  cookieStore.set(MFA_PENDING_COOKIE_NAME, "", {
+  cookieStore.set(MFA_CONFIG.PENDING_COOKIE_NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     expires: new Date(0),
   })
+}
+
+export async function setTrustedMfaDeviceCookie(params: {
+  userId: string
+  userAgent?: string | null
+}) {
+  const cookieStore = await cookies()
+  const selector = randomBytes(16).toString("base64url")
+  const token = randomBytes(32).toString("base64url")
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + MFA_CONFIG.TRUSTED_DEVICE.TTL_MS)
+
+  await db.insert(TrustedMfaDevicesTable).values({
+    user_id: params.userId,
+    selector,
+    token_hash: hashTrustedMfaDeviceToken(token),
+    expires_at: expiresAt,
+    user_agent: params.userAgent ?? null,
+    last_used_at: now,
+    updated_at: now,
+  })
+
+  cookieStore.set(
+    MFA_CONFIG.TRUSTED_DEVICE.COOKIE_NAME,
+    encodeTrustedMfaDeviceCookie({ selector, token }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(MFA_CONFIG.TRUSTED_DEVICE.TTL_MS / 1000),
+    }
+  )
+}
+
+export async function clearTrustedMfaDeviceCookie() {
+  const cookieStore = await cookies()
+
+  cookieStore.set(MFA_CONFIG.TRUSTED_DEVICE.COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+  })
+}
+
+export async function revokeTrustedMfaDevices(userId: string) {
+  await db
+    .update(TrustedMfaDevicesTable)
+    .set({ revoked_at: new Date(), updated_at: new Date() })
+    .where(
+      and(
+        eq(TrustedMfaDevicesTable.user_id, userId),
+        isNull(TrustedMfaDevicesTable.revoked_at)
+      )
+    )
+}
+
+export async function hasTrustedMfaDevice(userId: string) {
+  const cookieStore = await cookies()
+  const cookie = cookieStore.get(MFA_CONFIG.TRUSTED_DEVICE.COOKIE_NAME)
+
+  if (!cookie?.value) {
+    return false
+  }
+
+  const parsed = decodeTrustedMfaDeviceCookie(cookie.value)
+
+  if (!parsed) {
+    await clearTrustedMfaDeviceCookie()
+    return false
+  }
+
+  const [device] = await db
+    .select()
+    .from(TrustedMfaDevicesTable)
+    .where(
+      and(
+        eq(TrustedMfaDevicesTable.user_id, userId),
+        eq(TrustedMfaDevicesTable.selector, parsed.selector),
+        isNull(TrustedMfaDevicesTable.revoked_at),
+        gt(TrustedMfaDevicesTable.expires_at, new Date())
+      )
+    )
+    .limit(1)
+
+  if (!device) {
+    await clearTrustedMfaDeviceCookie()
+    return false
+  }
+
+  if (hashTrustedMfaDeviceToken(parsed.token) !== device.token_hash) {
+    await clearTrustedMfaDeviceCookie()
+    return false
+  }
+
+  await db
+    .update(TrustedMfaDevicesTable)
+    .set({ last_used_at: new Date(), updated_at: new Date() })
+    .where(eq(TrustedMfaDevicesTable.id, device.id))
+
+  return true
 }
 
 export async function getPendingMfaChallenge() {
@@ -1423,7 +1543,7 @@ export async function getPendingMfaChallenge() {
     resendAvailableAt:
       pendingState.method === "email"
         ? new Date(
-            challenge.last_sent_at.getTime() + EMAIL_MFA_RESEND_INTERVAL_MS
+            challenge.last_sent_at.getTime() + MFA_CONFIG.EMAIL.RESEND_INTERVAL_MS
           )
         : challenge.expires_at,
   }

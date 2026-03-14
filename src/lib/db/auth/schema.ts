@@ -275,12 +275,55 @@ export const authRateLimitsTable = pgTable(
   ]
 )
 
+export const trustedMfaDevicesTable = pgTable(
+  "trusted_mfa_devices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    selector: text("selector").notNull(),
+    token_hash: text("token_hash").notNull(),
+    expires_at: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    user_agent: text("user_agent"),
+    last_used_at: timestamp("last_used_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    revoked_at: timestamp("revoked_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    created_at: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+    updated_at: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (devices) => [
+    uniqueIndex("trusted_mfa_devices_selector_unique_idx").on(devices.selector),
+    index("trusted_mfa_devices_user_id_idx").on(devices.user_id),
+    index("trusted_mfa_devices_expires_at_idx").on(devices.expires_at),
+  ]
+)
+
 export const UsersTable = usersTable
 export const SessionsTable = sessionsTable
 export const VerificationsTable = verificationsTable
 export const UserMfaMethodsTable = userMfaMethodsTable
 export const UserRecoveryCodesTable = userRecoveryCodesTable
 export const AuthRateLimitsTable = authRateLimitsTable
+export const TrustedMfaDevicesTable = trustedMfaDevicesTable
 
 export type User = InferSelectModel<typeof usersTable>
 export type NewUser = InferInsertModel<typeof usersTable>
@@ -296,3 +339,5 @@ export type UserRecoveryCode = InferSelectModel<typeof userRecoveryCodesTable>
 export type NewUserRecoveryCode = InferInsertModel<typeof userRecoveryCodesTable>
 export type AuthRateLimit = InferSelectModel<typeof authRateLimitsTable>
 export type NewAuthRateLimit = InferInsertModel<typeof authRateLimitsTable>
+export type TrustedMfaDevice = InferSelectModel<typeof trustedMfaDevicesTable>
+export type NewTrustedMfaDevice = InferInsertModel<typeof trustedMfaDevicesTable>

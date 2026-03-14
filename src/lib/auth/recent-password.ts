@@ -4,10 +4,7 @@ import { createHmac } from "node:crypto"
 import { verify } from "@node-rs/argon2"
 import { cookies } from "next/headers"
 
-import {
-  RECENT_PASSWORD_CONFIRMATION_COOKIE_NAME,
-  RECENT_PASSWORD_CONFIRMATION_TTL_MS,
-} from "@/lib/consts"
+import { RECENT_PASSWORD_CONFIRMATION_CONFIG } from "@/lib/consts"
 import type { AuthSession } from "@/lib/auth/session-core"
 
 type RecentPasswordCookie = {
@@ -68,7 +65,7 @@ function decodeRecentPasswordCookie(value: string) {
 
 export async function hasRecentPasswordConfirmation(sessionId: string) {
   const cookieStore = await cookies()
-  const cookie = cookieStore.get(RECENT_PASSWORD_CONFIRMATION_COOKIE_NAME)
+  const cookie = cookieStore.get(RECENT_PASSWORD_CONFIRMATION_CONFIG.COOKIE_NAME)
 
   if (!cookie?.value) {
     return false
@@ -89,7 +86,7 @@ export async function hasRecentPasswordConfirmation(sessionId: string) {
     return false
   }
 
-  return Date.now() - parsed.confirmedAt <= RECENT_PASSWORD_CONFIRMATION_TTL_MS
+  return Date.now() - parsed.confirmedAt <= RECENT_PASSWORD_CONFIRMATION_CONFIG.TTL_MS
 }
 
 export async function setRecentPasswordConfirmation(sessionId: string) {
@@ -97,14 +94,14 @@ export async function setRecentPasswordConfirmation(sessionId: string) {
   const confirmedAt = Date.now()
 
   cookieStore.set(
-    RECENT_PASSWORD_CONFIRMATION_COOKIE_NAME,
+    RECENT_PASSWORD_CONFIRMATION_CONFIG.COOKIE_NAME,
     encodeRecentPasswordCookie(sessionId, confirmedAt),
     {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: Math.floor(RECENT_PASSWORD_CONFIRMATION_TTL_MS / 1000),
+      maxAge: Math.floor(RECENT_PASSWORD_CONFIRMATION_CONFIG.TTL_MS / 1000),
     }
   )
 }
@@ -112,7 +109,7 @@ export async function setRecentPasswordConfirmation(sessionId: string) {
 export async function clearRecentPasswordConfirmation() {
   const cookieStore = await cookies()
 
-  cookieStore.set(RECENT_PASSWORD_CONFIRMATION_COOKIE_NAME, "", {
+  cookieStore.set(RECENT_PASSWORD_CONFIRMATION_CONFIG.COOKIE_NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

@@ -15,6 +15,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 
 import { resendMfaCodeAction, verifyMfaCodeAction } from "./action"
 import {
@@ -57,7 +58,7 @@ export function MfaForm({
     VerifyMfaCodeOutput
   >({
     resolver: standardSchemaResolver(verifyMfaCodeSchema),
-    defaultValues: { code: "", codeType: "totp" },
+    defaultValues: { code: "", codeType: "totp", rememberDevice: false },
   })
 
   const verifyAction = useAction(verifyMfaCodeAction)
@@ -163,6 +164,13 @@ export function MfaForm({
 
             <FieldError errors={[errors.root]} />
 
+            <Field orientation="horizontal" className="max-w-fit items-center gap-2">
+              <Checkbox id="rememberDeviceEmail" {...register("rememberDevice")} />
+              <FieldLabel htmlFor="rememberDeviceEmail" className="mt-0.5">
+                Remember this device for 30 days
+              </FieldLabel>
+            </Field>
+
             <Button
               type="submit"
               className="w-full"
@@ -234,6 +242,13 @@ export function MfaForm({
             </FieldGroup>
 
             <FieldError errors={[errors.root]} />
+
+            <Field orientation="horizontal" className="max-w-fit items-center gap-2">
+              <Checkbox id="rememberDeviceTotp" {...register("rememberDevice")} />
+              <FieldLabel htmlFor="rememberDeviceTotp" className="mt-0.5">
+                Remember this device for 30 days
+              </FieldLabel>
+            </Field>
 
             <Button
               type="submit"

@@ -8,17 +8,14 @@ import {
   consumeRecoveryCodeMfaChallenge,
   getPendingMfaCookie,
   issueEmailMfaChallenge,
+  setTrustedMfaDeviceCookie,
   setPendingMfaCookie,
   verifyEmailMfaChallenge,
   verifyTotpMfaChallenge,
 } from "@/lib/auth/mfa"
 import { createSession, getRequestSessionContext, setSessionCookie } from "@/lib/auth/session"
 import { db, UsersTable, VerificationsTable } from "@/lib/db/drizzle"
-import {
-  MFA_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
-  MFA_IP_RATE_LIMIT_MAX_ATTEMPTS,
-  MFA_RATE_LIMIT_WINDOW_MS,
-} from "@/lib/consts"
+import { RATE_LIMIT_CONFIG } from "@/lib/consts"
 import { and, eq } from "drizzle-orm"
 import { verifyMfaCodeSchema } from "./schema"
 
@@ -39,8 +36,8 @@ export const verifyMfaCodeAction = actionClient
       const ipLimit = await consumeRateLimit({
         scope: "mfa_verify:ip",
         key: requestIpAddress,
-        maxAttempts: MFA_IP_RATE_LIMIT_MAX_ATTEMPTS,
-        windowMs: MFA_RATE_LIMIT_WINDOW_MS,
+        maxAttempts: RATE_LIMIT_CONFIG.MFA.IP_MAX_ATTEMPTS,
+        windowMs: RATE_LIMIT_CONFIG.MFA.WINDOW_MS,
       })
 
       if (!ipLimit.allowed) {
@@ -51,8 +48,8 @@ export const verifyMfaCodeAction = actionClient
     const accountLimit = await consumeRateLimit({
       scope: "mfa_verify:account",
       key: pendingMfa.userId,
-      maxAttempts: MFA_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
-      windowMs: MFA_RATE_LIMIT_WINDOW_MS,
+      maxAttempts: RATE_LIMIT_CONFIG.MFA.ACCOUNT_MAX_ATTEMPTS,
+      windowMs: RATE_LIMIT_CONFIG.MFA.WINDOW_MS,
     })
 
     if (!accountLimit.allowed) {
@@ -94,6 +91,13 @@ export const verifyMfaCodeAction = actionClient
       city = null,
       userAgent = null,
     } = metadata
+
+    if (parsedInput.rememberDevice) {
+      await setTrustedMfaDeviceCookie({
+        userId: pendingMfa.userId,
+        userAgent,
+      })
+    }
 
     const { token } = await createSession(pendingMfa.userId, {
       rememberMe,

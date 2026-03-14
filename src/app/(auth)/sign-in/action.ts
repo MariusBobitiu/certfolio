@@ -6,11 +6,7 @@ import { verify } from "@node-rs/argon2"
 import { actionClient } from "@/lib/safe-action"
 import { consumeRateLimit, resetRateLimit } from "@/lib/auth/rate-limit"
 import { db, UsersTable } from "@/lib/db/drizzle"
-import {
-  SIGN_IN_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
-  SIGN_IN_IP_RATE_LIMIT_MAX_ATTEMPTS,
-  SIGN_IN_RATE_LIMIT_WINDOW_MS,
-} from "@/lib/consts"
+import { RATE_LIMIT_CONFIG } from "@/lib/consts"
 import {
   createSession,
   getRequestSessionContext,
@@ -18,6 +14,7 @@ import {
 } from "@/lib/auth/session"
 import {
   getEnabledMfaMethods,
+  hasTrustedMfaDevice,
   issueEmailMfaChallenge,
   issueTotpMfaChallenge,
   setPendingMfaCookie,
@@ -35,8 +32,8 @@ export const signInAction = actionClient
       const ipLimit = await consumeRateLimit({
         scope: "sign_in:ip",
         key: ipAddress,
-        maxAttempts: SIGN_IN_IP_RATE_LIMIT_MAX_ATTEMPTS,
-        windowMs: SIGN_IN_RATE_LIMIT_WINDOW_MS,
+        maxAttempts: RATE_LIMIT_CONFIG.SIGN_IN.IP_MAX_ATTEMPTS,
+        windowMs: RATE_LIMIT_CONFIG.SIGN_IN.WINDOW_MS,
       })
 
       if (!ipLimit.allowed) {
@@ -47,8 +44,8 @@ export const signInAction = actionClient
     const accountLimit = await consumeRateLimit({
       scope: "sign_in:account",
       key: normalizedEmail,
-      maxAttempts: SIGN_IN_ACCOUNT_RATE_LIMIT_MAX_ATTEMPTS,
-      windowMs: SIGN_IN_RATE_LIMIT_WINDOW_MS,
+      maxAttempts: RATE_LIMIT_CONFIG.SIGN_IN.ACCOUNT_MAX_ATTEMPTS,
+      windowMs: RATE_LIMIT_CONFIG.SIGN_IN.WINDOW_MS,
     })
 
     if (!accountLimit.allowed) {
@@ -89,8 +86,10 @@ export const signInAction = actionClient
 
     const enabledMfaMethods = await getEnabledMfaMethods(user.id)
     const primaryMfaMethod = enabledMfaMethods[0]
+    const trustedDeviceValid =
+      enabledMfaMethods.length > 0 ? await hasTrustedMfaDevice(user.id) : false
 
-    if (primaryMfaMethod?.method === "email") {
+    if (primaryMfaMethod?.method === "email" && !trustedDeviceValid) {
       const challenge = await issueEmailMfaChallenge({
         userId: user.id,
         email: user.email,
@@ -110,7 +109,7 @@ export const signInAction = actionClient
       redirect("/mfa")
     }
 
-    if (primaryMfaMethod?.method === "totp") {
+    if (primaryMfaMethod?.method === "totp" && !trustedDeviceValid) {
       const challenge = await issueTotpMfaChallenge({
         userId: user.id,
         rememberMe,

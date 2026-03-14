@@ -13,6 +13,7 @@ import {
   enableEmailMfaMethod,
   getMfaMethodSummary,
   generateRecoveryCodes,
+  revokeTrustedMfaDevices,
 } from "@/lib/auth/mfa"
 import { validatePassword } from "@/lib/auth/password-validation"
 import { db, SessionsTable, UsersTable } from "@/lib/db/drizzle"
@@ -64,6 +65,8 @@ export const changePasswordAction = actionClient
           )
         )
     })
+
+    await revokeTrustedMfaDevices(session.user.id)
 
     return { success: "Password changed and other sessions revoked" }
   })
