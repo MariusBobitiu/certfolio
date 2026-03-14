@@ -12,6 +12,7 @@ import {
   getRequestSessionContext,
   setSessionCookie,
 } from "@/lib/auth/session"
+import { setPendingEmailVerificationCookie } from "@/lib/auth/email-verification"
 import {
   getEnabledMfaMethods,
   hasTrustedMfaDevice,
@@ -58,19 +59,8 @@ export const signInAction = actionClient
       .where(eq(UsersTable.email, normalizedEmail))
       .limit(1)
 
-    if (!user) {
+    if (!user || user.deleted_at || user.archived_at) {
       return { failure: "Invalid email or password" }
-    }
-
-    if (user.deleted_at) {
-      return { failure: "This account has been deleted" }
-    }
-
-    if (user.archived_at) {
-      return {
-        failure:
-          "This account has been deactivated. Contact support to reactivate.",
-      }
     }
 
     const passwordValid = await verify(user.password_hash, password)
@@ -82,6 +72,15 @@ export const signInAction = actionClient
     await resetRateLimit("sign_in:account", normalizedEmail)
     if (ipAddress) {
       await resetRateLimit("sign_in:ip", ipAddress)
+    }
+
+    if (!user.email_verified_at) {
+      await setPendingEmailVerificationCookie({
+        userId: user.id,
+        email: user.email,
+      })
+
+      redirect("/verify-email")
     }
 
     const enabledMfaMethods = await getEnabledMfaMethods(user.id)

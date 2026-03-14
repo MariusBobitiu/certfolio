@@ -1,9 +1,11 @@
 import "server-only"
 
-import { createHash, randomBytes } from "node:crypto"
+import { createHash, createHmac, randomBytes } from "node:crypto"
 import { and, eq, gt, isNull } from "drizzle-orm"
+import { cookies } from "next/headers"
 import { Resend } from "resend"
 
+import { RATE_LIMIT_CONFIG } from "@/lib/consts"
 import { db, UsersTable, VerificationsTable } from "@/lib/db/drizzle"
 
 const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24
@@ -14,8 +16,91 @@ type SendEmailVerificationParams = {
   name: string
 }
 
+type PendingEmailVerificationState = {
+  userId: string
+  email: string
+  confirmedAt: number
+  signature: string
+}
+
 function hashVerificationToken(token: string) {
   return createHash("sha256").update(token).digest("hex")
+}
+
+function getEmailVerificationCookieKey() {
+  const rawKey =
+    process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY ??
+    process.env.MFA_TOTP_ENCRYPTION_KEY
+
+  if (!rawKey) {
+    throw new Error(
+      "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is required for email verification cookies."
+    )
+  }
+
+  return rawKey
+}
+
+function signPendingEmailVerificationValue(
+  userId: string,
+  email: string,
+  confirmedAt: number
+) {
+  return createHmac("sha256", getEmailVerificationCookieKey())
+    .update(`${userId}:${email}:${confirmedAt}`)
+    .digest("base64url")
+}
+
+function encodePendingEmailVerificationCookie(
+  userId: string,
+  email: string,
+  confirmedAt: number
+) {
+  return Buffer.from(
+    JSON.stringify({
+      userId,
+      email,
+      confirmedAt,
+      signature: signPendingEmailVerificationValue(userId, email, confirmedAt),
+    } satisfies PendingEmailVerificationState)
+  ).toString("base64url")
+}
+
+function decodePendingEmailVerificationCookie(value: string) {
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8")
+    ) as Partial<PendingEmailVerificationState>
+
+    if (
+      typeof parsed.userId !== "string" ||
+      typeof parsed.email !== "string" ||
+      typeof parsed.confirmedAt !== "number" ||
+      typeof parsed.signature !== "string"
+    ) {
+      return null
+    }
+
+    return parsed as PendingEmailVerificationState
+  } catch {
+    return null
+  }
+}
+
+export function getMaskedEmail(email: string) {
+  const [localPart, domain] = email.split("@")
+
+  if (!localPart || !domain) {
+    return email
+  }
+
+  if (localPart.length <= 2) {
+    return `${localPart[0] ?? "*"}*@${domain}`
+  }
+
+  return `${localPart.slice(0, 2)}${"*".repeat(
+    Math.max(1, localPart.length - 2)
+  )}@${domain}`
 }
 
 function getBaseUrl() {
@@ -123,5 +208,82 @@ export async function verifyEmailToken(token: string) {
   return {
     success: true as const,
     userId: verification.user_id,
+  }
+}
+
+export async function setPendingEmailVerificationCookie(params: {
+  userId: string
+  email: string
+}) {
+  const cookieStore = await cookies()
+  const confirmedAt = Date.now()
+
+  cookieStore.set(
+    RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_COOKIE_NAME,
+    encodePendingEmailVerificationCookie(
+      params.userId,
+      params.email,
+      confirmedAt
+    ),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(
+        RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_TTL_MS / 1000
+      ),
+    }
+  )
+}
+
+export async function clearPendingEmailVerificationCookie() {
+  const cookieStore = await cookies()
+
+  cookieStore.set(RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+  })
+}
+
+export async function getPendingEmailVerificationCookie() {
+  const cookieStore = await cookies()
+  const cookie = cookieStore.get(
+    RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_COOKIE_NAME
+  )
+
+  if (!cookie?.value) {
+    return null
+  }
+
+  const parsed = decodePendingEmailVerificationCookie(cookie.value)
+
+  if (!parsed) {
+    await clearPendingEmailVerificationCookie()
+    return null
+  }
+
+  const expectedSignature = signPendingEmailVerificationValue(
+    parsed.userId,
+    parsed.email,
+    parsed.confirmedAt
+  )
+
+  if (
+    expectedSignature !== parsed.signature ||
+    Date.now() - parsed.confirmedAt >
+      RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_TTL_MS
+  ) {
+    await clearPendingEmailVerificationCookie()
+    return null
+  }
+
+  return {
+    userId: parsed.userId,
+    email: parsed.email,
+    maskedEmail: getMaskedEmail(parsed.email),
   }
 }

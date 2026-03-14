@@ -8,11 +8,9 @@ import { redirect } from "next/navigation"
 
 import { actionClient } from "@/lib/safe-action"
 import {
-  createSession,
-  getRequestSessionContext,
-  setSessionCookie,
-} from "@/lib/auth/session"
-import { sendEmailVerification } from "@/lib/auth/email-verification"
+  sendEmailVerification,
+  setPendingEmailVerificationCookie,
+} from "@/lib/auth/email-verification"
 import { db, UsersTable } from "@/lib/db/drizzle"
 
 import { signUpSchema } from "./schema"
@@ -67,7 +65,7 @@ function getAvatarUrl(name: string) {
 export const signUpAction = actionClient
   .inputSchema(signUpSchema)
   .action(async ({ parsedInput }) => {
-    const { name, email, password, rememberMe } = parsedInput
+    const { name, email, password } = parsedInput
 
     const normalizedEmail = email.toLowerCase().trim()
 
@@ -95,25 +93,19 @@ export const signUpAction = actionClient
       })
       .returning()
 
-    const { ipAddress, userAgent } = await getRequestSessionContext()
-
-    const { token } = await createSession(user.id, {
-      rememberMe,
-      ipAddress,
-      userAgent,
-    })
-
-    await setSessionCookie(token, rememberMe)
-
     try {
       await sendEmailVerification({
         userId: user.id,
         email: user.email,
         name: user.name,
       })
+      await setPendingEmailVerificationCookie({
+        userId: user.id,
+        email: user.email,
+      })
     } catch (error) {
       console.error("Failed to send verification email after sign-up:", error)
     }
 
-    redirect("/dashboard")
+    redirect("/verify-email")
   })
