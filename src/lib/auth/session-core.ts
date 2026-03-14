@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto"
-import { and, eq, gt, isNull } from "drizzle-orm"
+import { and, eq, gt, isNull, ne } from "drizzle-orm"
 import { db, SessionsTable, UsersTable } from "@/lib/db/drizzle"
 
 export const SESSION_COOKIE_NAME = "cfl_session"
@@ -85,6 +85,33 @@ export async function revokeSessionById(id: string) {
     .update(SessionsTable)
     .set({ revoked_at: new Date() })
     .where(eq(SessionsTable.id, id))
+}
+
+export async function revokeUserSessions(
+  userId: string,
+  options?: { excludeSessionId?: string }
+) {
+  const conditions = [
+    eq(SessionsTable.user_id, userId),
+    isNull(SessionsTable.revoked_at),
+    gt(SessionsTable.expires_at, new Date()),
+  ]
+
+  if (options?.excludeSessionId) {
+    conditions.push(ne(SessionsTable.id, options.excludeSessionId))
+  }
+
+  await db
+    .update(SessionsTable)
+    .set({ revoked_at: new Date() })
+    .where(and(...conditions))
+}
+
+export async function markSessionReauthenticated(sessionId: string) {
+  await db
+    .update(SessionsTable)
+    .set({ reauthenticated_at: new Date() })
+    .where(eq(SessionsTable.id, sessionId))
 }
 
 export async function validateSessionToken(token: string) {

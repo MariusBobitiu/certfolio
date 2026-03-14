@@ -91,6 +91,10 @@ export const sessionsTable = pgTable(
       withTimezone: true,
       mode: "date",
     }),
+    reauthenticated_at: timestamp("reauthenticated_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
     revoked_at: timestamp("revoked_at", {
       withTimezone: true,
       mode: "date",

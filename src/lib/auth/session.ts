@@ -11,7 +11,9 @@ export {
   SESSION_COOKIE_NAME,
   createSession,
   hashSessionToken,
+  markSessionReauthenticated,
   revokeSessionById,
+  revokeUserSessions,
   validateSessionToken,
 } from "./session-core"
 

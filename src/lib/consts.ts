@@ -29,7 +29,6 @@ export const MFA_CONFIG = {
 } as const
 
 export const RECENT_PASSWORD_CONFIRMATION_CONFIG = {
-  COOKIE_NAME: "cfl_recent_pwd",
   TTL_MS: 1000 * 60 * 10,
 } as const
 

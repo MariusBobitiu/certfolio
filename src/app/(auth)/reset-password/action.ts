@@ -1,14 +1,20 @@
 "use server"
 
 import { hash, verify } from "@node-rs/argon2"
-import { eq } from "drizzle-orm"
+import { and, eq, gt, isNull } from "drizzle-orm"
 import * as z from "zod/v4"
 
 import { actionClient } from "@/lib/safe-action"
-import { db, UsersTable } from "@/lib/db/drizzle"
+import {
+  db,
+  SessionsTable,
+  TrustedMfaDevicesTable,
+  UsersTable,
+  VerificationsTable,
+} from "@/lib/db/drizzle"
 
 import { resetPasswordSchema } from "./schema"
-import { validatePasswordResetToken, consumePasswordResetToken } from "@/lib/auth/password-reset"
+import { validatePasswordResetToken } from "@/lib/auth/password-reset"
 
 const resetPasswordWithTokenSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
@@ -44,12 +50,38 @@ export const resetPasswordAction = actionClient
 
     const passwordHash = await hash(password)
 
-    await db
-      .update(UsersTable)
-      .set({ password_hash: passwordHash })
-      .where(eq(UsersTable.id, result.userId))
+    await db.transaction(async (tx) => {
+      await tx
+        .update(UsersTable)
+        .set({ password_hash: passwordHash, updated_at: new Date() })
+        .where(eq(UsersTable.id, result.userId))
 
-    await consumePasswordResetToken(result.verificationId)
+      await tx
+        .update(TrustedMfaDevicesTable)
+        .set({ revoked_at: new Date(), updated_at: new Date() })
+        .where(
+          and(
+            eq(TrustedMfaDevicesTable.user_id, result.userId),
+            isNull(TrustedMfaDevicesTable.revoked_at)
+          )
+        )
+
+      await tx
+        .update(SessionsTable)
+        .set({ revoked_at: new Date() })
+        .where(
+          and(
+            eq(SessionsTable.user_id, result.userId),
+            isNull(SessionsTable.revoked_at),
+            gt(SessionsTable.expires_at, new Date())
+          )
+        )
+
+      await tx
+        .update(VerificationsTable)
+        .set({ consumed_at: new Date() })
+        .where(eq(VerificationsTable.id, result.verificationId))
+    })
 
     return { success: true as const }
   })
