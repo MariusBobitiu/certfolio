@@ -6,7 +6,7 @@ import { getCurrentSession } from "@/lib/auth/session"
 import { db, ProjectsTable } from "@/lib/db/drizzle"
 import { actionClient } from "@/lib/safe-action"
 
-import { createProjectSchema } from "./schema"
+import { createProjectSchema, updateProjectSchema } from "./schema"
 
 function slugifyProjectTitle(title: string) {
   return title
@@ -72,4 +72,43 @@ export const createProjectAction = actionClient
       .returning()
 
     return { success: "Project created", project }
+  })
+
+export const updateProjectAction = actionClient
+  .inputSchema(updateProjectSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) {
+      return { failure: "Unauthorized" }
+    }
+
+    const [existingProject] = await db
+      .select({ id: ProjectsTable.id })
+      .from(ProjectsTable)
+      .where(
+        and(
+          eq(ProjectsTable.user_id, session.user.id),
+          eq(ProjectsTable.slug, parsedInput.slug)
+        )
+      )
+      .limit(1)
+
+    if (!existingProject) {
+      return { failure: "Project not found" }
+    }
+
+    const [project] = await db
+      .update(ProjectsTable)
+      .set({
+        title: parsedInput.title.trim(),
+        project_type: parsedInput.projectType.trim(),
+        role: parsedInput.role.trim(),
+        summary: parsedInput.summary.trim(),
+        status: parsedInput.status,
+        updated_at: new Date(),
+      })
+      .where(eq(ProjectsTable.id, existingProject.id))
+      .returning()
+
+    return { success: "Project updated", project }
   })

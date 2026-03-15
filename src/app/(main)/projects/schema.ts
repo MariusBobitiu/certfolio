@@ -8,3 +8,10 @@ export const createProjectSchema = z.object({
 })
 
 export type CreateProjectInput = z.input<typeof createProjectSchema>
+
+export const updateProjectSchema = createProjectSchema.extend({
+  slug: z.string().trim().min(1, "Project slug is required"),
+  status: z.enum(["draft", "published", "archived"]),
+})
+
+export type UpdateProjectInput = z.input<typeof updateProjectSchema>

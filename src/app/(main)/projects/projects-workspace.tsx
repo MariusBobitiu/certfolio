@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import type { Route } from 'next'
+import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
-import { Plus, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -22,6 +24,7 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 import { createProjectAction } from './action'
 
 const editorialPrompts = [
@@ -61,12 +64,37 @@ type ActionValidationErrors = {
 	summary?: { _errors?: string[] }
 }
 
+function ProjectMetaBadge({
+	label,
+	value,
+	className,
+}: {
+	label: string
+	value: string
+	className?: string
+}) {
+	return (
+		<div
+			className={cn(
+				'relative pt-2',
+				className,
+			)}
+		>
+			<span className='absolute left-3 top-1.25 z-10 px-1 text-[6px] font-semibold uppercase tracking-[0.18em] text-muted-foreground bg-card/88 border-t border-border/70 dark:border-white/8 rounded-full'>
+				{label}
+			</span>
+			<span className='inline-flex h-10 w-full items-center rounded-full border border-border/70 bg-card/88 px-6 text-sm text-foreground dark:border-white/8'>
+				{value}
+			</span>
+		</div>
+	)
+}
+
 export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 	const [draft, setDraft] = useState<ProjectDraft>(emptyDraft)
 	const [projects, setProjects] = useState<ProjectDraft[]>(initialProjects)
 	const [submitError, setSubmitError] = useState<string | null>(null)
-	const [validationErrors, setValidationErrors] = useState<ActionValidationErrors>({})
 
 	const { execute, isPending, result } = useAction(createProjectAction, {
 		onSuccess: ({ data }) => {
@@ -89,33 +117,17 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 			])
 			setDraft(emptyDraft)
 			setSubmitError(null)
-			setValidationErrors({})
 			setIsDialogOpen(false)
 		},
 		onError: ({ error }) => {
 			setSubmitError(error.serverError ?? "We could not create the project right now.")
 		},
 	})
-
-	useEffect(() => {
-		const errors = result.validationErrors as ActionValidationErrors | undefined
-		if (!errors) {
-			return
-		}
-
-		setValidationErrors(errors)
-	}, [result.validationErrors])
+	const validationErrors = (result.validationErrors as ActionValidationErrors | undefined) ?? {}
 
 	const handleChange = (field: keyof ProjectDraft, value: string) => {
 		if (submitError) {
 			setSubmitError(null)
-		}
-
-		if (validationErrors[field as keyof ActionValidationErrors]) {
-			setValidationErrors((current) => ({
-				...current,
-				[field]: undefined,
-			}))
 		}
 
 		setDraft((current) => ({
@@ -127,7 +139,6 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 		setSubmitError(null)
-		setValidationErrors({})
 		execute({
 			title: draft.title,
 			projectType: draft.projectType,
@@ -136,134 +147,226 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 		})
 	}
 
+	const getProjectHref = (slug: string) => `/projects/${slug}` as Route
+	const publishedCount = projects.filter((project) => project.status === 'published').length
+	const draftCount = projects.filter((project) => project.status === 'draft').length
+	const archivedCount = projects.filter((project) => project.status === 'archived').length
+	const hasProjects = projects.length > 0
+
 	return (
 		<>
-			<section className='mt-8 grid gap-6 lg:grid-cols-[1.5fr_0.9fr]'>
-				<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
-					<div className='space-y-3 border-b border-border/60 pb-5'>
-						<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
-							Collection Surface
-						</p>
-						<h2 className='text-2xl font-semibold tracking-[-0.03em]'>
-							{projects.length > 0
-								? 'Projects created in this session'
-								: 'No projects yet, but the first one should set the tone'}
-						</h2>
-						<p className='max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base'>
-							{projects.length > 0
-								? 'These cards are local session previews only. They establish the listing surface and information hierarchy before persistence and editing arrive in later phases.'
-								: 'A strong Certfolio project explains context, ownership, outcome, and how the work can be trusted. Start with one project you can describe clearly, then deepen it over time.'}
-						</p>
+			{hasProjects ? (
+				<section className='mt-8 space-y-6'>
+					<div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
+						<div className='space-y-3'>
+							<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
+								Project Index
+							</p>
+							<h2 className='text-2xl font-semibold tracking-[-0.03em] sm:text-3xl'>
+								Your projects should feel navigable, not buried.
+							</h2>
+							<p className='max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base'>
+								Keep the collection readable at a glance, then use each project page to
+								develop the fuller proof-of-work story.
+							</p>
+						</div>
+
+						<Button className='rounded-full lg:shrink-0' onClick={() => setIsDialogOpen(true)}>
+							<Plus className='size-4' />
+							Add new project
+						</Button>
 					</div>
 
-					<div className='mt-6 space-y-5'>
-						{projects.length > 0 ? (
-							<div className='grid gap-4 xl:grid-cols-2'>
+					<div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
+								Total
+							</p>
+							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{projects.length}</p>
+						</div>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
+								Published
+							</p>
+							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{publishedCount}</p>
+						</div>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
+								Drafts
+							</p>
+							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{draftCount}</p>
+						</div>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
+								Archived
+							</p>
+							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{archivedCount}</p>
+						</div>
+					</div>
+
+					<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+						<div className='flex flex-col gap-3 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between'>
+							<div className='space-y-2'>
+								<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
+									Collection Surface
+								</p>
+								<h3 className='text-xl font-semibold tracking-[-0.03em] sm:text-2xl'>
+									All projects
+								</h3>
+								<p className='max-w-2xl text-sm leading-6 text-muted-foreground'>
+									Drafts, published work, and archived entries all live here until
+									you decide how each project should evolve.
+								</p>
+							</div>
+						</div>
+
+						<div className='mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3'>
 								{projects.map((project, index) => (
 									<article
 										key={project.id}
-										className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'
+										className='group flex h-full min-h-112 flex-col rounded-3xl border border-border/70 bg-linear-to-br from-secondary/55 via-card to-card p-5 transition-colors hover:border-border/90 dark:border-white/7 dark:from-[#121319] dark:via-[#101116] dark:to-[#14161d]'
 									>
-										<div className='space-y-3'>
-											<div className='inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-white/8 dark:bg-white/4'>
-												<Sparkles className='size-3.5' />
-												{index === 0 ? 'Newest draft' : 'Draft preview'}
+										<div className='space-y-4'>
+											<div className='flex items-center justify-between gap-3'>
+												<div className='inline-flex items-center rounded-full border border-border/70 bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-white/8 dark:bg-white/4'>
+													{index === 0 ? 'Most recent' : 'Project'}
+												</div>
+												<div
+													className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+														project.status === 'published'
+															? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+															: project.status === 'archived'
+																? 'bg-muted text-muted-foreground'
+																: 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
+													}`}
+												>
+													{project.status}
+												</div>
 											</div>
-											<div>
-												<h3 className='text-xl font-semibold tracking-[-0.03em] text-foreground'>
+											<div className='space-y-3'>
+												<Link
+													href={getProjectHref(project.slug)}
+													className='line-clamp-2 min-h-18 text-2xl font-semibold tracking-[-0.04em] text-foreground transition-opacity hover:opacity-80'
+												>
 													{project.title}
-												</h3>
-												<p className='mt-2 text-sm leading-6 text-muted-foreground'>
+												</Link>
+												<p className='min-h-46 text-sm leading-7 text-muted-foreground line-clamp-4'>
 													{project.summary}
 												</p>
 											</div>
 										</div>
 
-										<div className='mt-5 flex flex-wrap gap-3'>
-											<div className='rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm dark:border-white/8 dark:bg-white/4'>
-												Type: {project.projectType}
-											</div>
-											<div className='rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm dark:border-white/8 dark:bg-white/4'>
-												Role: {project.role}
-											</div>
-											<div className='rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm capitalize dark:border-white/8 dark:bg-white/4'>
-												Status: {project.status}
-											</div>
+										<div className='mt-6 flex min-h-23 flex-wrap content-start gap-2'>
+											<ProjectMetaBadge label='Type' value={project.projectType} />
+											<ProjectMetaBadge label='Role' value={project.role} />
+										</div>
+
+										<div className='mt-auto pt-8'>
+											<Link
+												href={getProjectHref(project.slug)}
+												className='inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline'
+											>
+												Open project
+												<ArrowUpRight className='size-4' />
+											</Link>
 										</div>
 									</article>
 								))}
-							</div>
-						) : (
-							<>
-								<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
-									<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
-										Editorial Guidance
+						</div>
+					</div>
+				</section>
+			) : (
+				<section className='mt-8 grid gap-6 lg:grid-cols-[1.7fr_0.8fr]'>
+					<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+						<div className='space-y-5 border-b border-border/60 pb-5'>
+							<div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
+								<div className='space-y-3'>
+									<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
+										Collection Surface
 									</p>
-									<div className='mt-4 space-y-3'>
-										{editorialPrompts.map((prompt, index) => (
-											<div key={prompt} className='flex gap-4'>
-												<div className='flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-sm font-medium text-foreground dark:bg-white/6'>
-													{index + 1}
-												</div>
-												<p className='pt-1 text-sm leading-6 text-muted-foreground sm:text-base'>
-													{prompt}
-												</p>
+									<h2 className='text-2xl font-semibold tracking-[-0.03em]'>
+										No projects yet, but the first one should set the tone
+									</h2>
+									<p className='max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base'>
+										A strong Certfolio project explains context, ownership, outcome, and how the work can be trusted. Start with one project you can describe clearly, then deepen it over time.
+									</p>
+								</div>
+
+								<Button className='rounded-full lg:shrink-0' onClick={() => setIsDialogOpen(true)}>
+									<Plus className='size-4' />
+									Add new project
+								</Button>
+							</div>
+						</div>
+
+						<div className='mt-6 space-y-5'>
+							<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
+								<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
+									Editorial Guidance
+								</p>
+								<div className='mt-4 space-y-3'>
+									{editorialPrompts.map((prompt, index) => (
+										<div key={prompt} className='flex gap-4'>
+											<div className='flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-sm font-medium text-foreground dark:bg-white/6'>
+												{index + 1}
 											</div>
-										))}
-									</div>
+											<p className='pt-1 text-sm leading-6 text-muted-foreground sm:text-base'>
+												{prompt}
+											</p>
+										</div>
+									))}
 								</div>
+							</div>
 
-								<div className='flex flex-col gap-3 rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-white/[0.035]'>
-									<div>
-										<p className='text-sm font-medium text-foreground'>Start with a project that can carry your story</p>
-										<p className='mt-1 text-sm leading-6 text-muted-foreground'>
-											Choose work you can explain well now and support with stronger proof later.
-										</p>
-									</div>
-									<Button className='rounded-full sm:self-start' onClick={() => setIsDialogOpen(true)}>
-										<Plus className='size-4' />
-										Add new project
-									</Button>
+							<div className='flex flex-col gap-3 rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-white/[0.035]'>
+								<div>
+									<p className='text-sm font-medium text-foreground'>Start with a project that can carry your story</p>
+									<p className='mt-1 text-sm leading-6 text-muted-foreground'>
+										Choose work you can explain well now and support with stronger proof later.
+									</p>
 								</div>
-							</>
-						)}
-					</div>
-				</div>
-
-				<aside className='rounded-4xl border border-border/70 bg-card/90 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
-					<div className='space-y-3'>
-						<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
-							Editorial Direction
-						</p>
-						<h2 className='text-2xl font-semibold tracking-[-0.03em]'>
-							Premium, calm, and credibility-first
-						</h2>
-						<p className='text-sm leading-6 text-muted-foreground sm:text-base'>
-							The Projects page is being framed as a professional identity surface, not
-							an admin dashboard. Later phases can add actions and data without changing
-							this page’s visual hierarchy.
-						</p>
+								<Button className='rounded-full sm:self-start' onClick={() => setIsDialogOpen(true)}>
+									<Plus className='size-4' />
+									Add new project
+								</Button>
+							</div>
+						</div>
 					</div>
 
-					<div className='mt-6 space-y-4'>
-						<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
-							<p className='text-sm font-medium text-foreground'>What this phase establishes</p>
-							<p className='mt-2 text-sm leading-6 text-muted-foreground'>
-								A lightweight project listing surface with reusable cards that can
-								display multiple locally created projects before real persistence exists.
+					<aside className='rounded-4xl border border-border/70 bg-card/90 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+						<div className='space-y-3'>
+							<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
+								Workspace Notes
+							</p>
+							<h2 className='text-2xl font-semibold tracking-[-0.03em]'>
+								Projects should read like evidence, not inventory
+							</h2>
+							<p className='text-sm leading-6 text-muted-foreground sm:text-base'>
+								Each project should eventually communicate context, ownership, outcomes,
+								and supporting proof in a recruiter-friendly way.
 							</p>
 						</div>
 
-						<div className='rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 dark:border-white/10 dark:bg-white/[0.035]'>
-							<p className='text-sm font-medium text-foreground'>Intentionally deferred</p>
-							<p className='mt-2 text-sm leading-6 text-muted-foreground'>
-								Real persistence, multi-project listing behavior, editing history, and
-								structured evidence still remain out of scope for this phase.
-							</p>
+						<div className='mt-6 space-y-4'>
+							<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
+								<p className='text-sm font-medium text-foreground'>What to strengthen next</p>
+								<p className='mt-2 text-sm leading-6 text-muted-foreground'>
+									Add clearer outcomes, better evidence, and stronger project-specific
+									storytelling so each card feels like proof-of-work rather than a summary block.
+								</p>
+							</div>
+
+							<div className='rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 dark:border-white/10 dark:bg-white/[0.035]'>
+								<p className='text-sm font-medium text-foreground'>Coming later</p>
+								<p className='mt-2 text-sm leading-6 text-muted-foreground'>
+									Evidence links, richer project fields, public profile reuse, and a more
+									robust filtering system still remain out of scope for this phase.
+								</p>
+							</div>
 						</div>
-					</div>
-				</aside>
-			</section>
+					</aside>
+				</section>
+			)}
 
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogContent className='max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-0 sm:max-w-2xl'>
