@@ -54,6 +54,7 @@ export const createProjectAction = actionClient
     const title = parsedInput.title.trim()
     const projectType = parsedInput.projectType.trim()
     const role = parsedInput.role.trim()
+    const coverImageKey = parsedInput.coverImageKey.trim()
     const summary = parsedInput.summary.trim()
     const context = parsedInput.context.trim()
     const outcome = parsedInput.outcome.trim()
@@ -72,6 +73,7 @@ export const createProjectAction = actionClient
           user_id: session.user.id,
           slug,
           title,
+          cover_image_key: coverImageKey,
           project_type: projectType,
           role,
           summary,
@@ -141,6 +143,7 @@ export const updateProjectAction = actionClient
         .update(ProjectsTable)
         .set({
           title: parsedInput.title.trim(),
+          cover_image_key: parsedInput.coverImageKey.trim(),
           project_type: parsedInput.projectType.trim(),
           role: parsedInput.role.trim(),
           summary: parsedInput.summary.trim(),

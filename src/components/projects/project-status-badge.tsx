@@ -22,7 +22,7 @@ export function ProjectStatusBadge({
 	return (
 		<div
 			className={cn(
-				'rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] capitalize',
+				'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
 				getProjectStatusTone(status),
 				className,
 			)}

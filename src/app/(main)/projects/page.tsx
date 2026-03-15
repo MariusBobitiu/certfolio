@@ -3,6 +3,7 @@ import { desc, eq, inArray } from 'drizzle-orm'
 
 import { getCurrentSession } from '@/lib/auth/session'
 import { db, ProjectEvidenceLinksTable, ProjectsTable } from '@/lib/db/drizzle'
+import { getProjectAssetUrl } from '@/lib/storage/r2'
 
 import { ProjectsWorkspace } from './projects-workspace'
 
@@ -48,6 +49,13 @@ export default async function ProjectsPage() {
 		accumulator[link.projectId] = (accumulator[link.projectId] ?? 0) + 1
 		return accumulator
 	}, {})
+	const coverImageEntries = await Promise.all(
+		projects.map(async (project) => [
+			project.id,
+			project.cover_image_key ? await getProjectAssetUrl(project.cover_image_key) : null,
+		] as const)
+	)
+	const coverImageMap = Object.fromEntries(coverImageEntries)
 	const hasProjects = projects.length > 0
 
 	return (
@@ -120,6 +128,7 @@ export default async function ProjectsPage() {
 					id: project.id,
 					slug: project.slug,
 					title: project.title,
+					coverImageUrl: coverImageMap[project.id] ?? null,
 					projectType: project.project_type,
 					role: project.role,
 					summary: project.summary,

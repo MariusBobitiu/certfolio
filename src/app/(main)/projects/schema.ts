@@ -17,6 +17,7 @@ export const createProjectSchema = z.object({
   title: z.string().trim().min(1, "Project title is required"),
   projectType: z.string().trim().min(1, "Project type is required"),
   role: z.string().trim().min(1, "Role is required"),
+  coverImageKey: z.string().trim().optional().default(""),
   summary: z.string().trim().min(1, "Project summary is required"),
   context: z.string().trim().optional().default(""),
   outcome: z.string().trim().optional().default(""),

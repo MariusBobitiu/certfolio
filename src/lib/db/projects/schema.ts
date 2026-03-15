@@ -36,6 +36,7 @@ export const projectsTable = pgTable(
       .references(() => usersTable.id, { onDelete: "cascade" }),
     slug: text("slug").notNull(),
     title: text("title").notNull(),
+    cover_image_key: text("cover_image_key").default("").notNull(),
     summary: text("summary").notNull(),
     context: text("context").default("").notNull(),
     outcome: text("outcome").default("").notNull(),

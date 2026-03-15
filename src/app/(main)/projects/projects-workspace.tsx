@@ -37,6 +37,7 @@ type ProjectDraft = {
 	id: string
 	slug: string
 	title: string
+	coverImageUrl: string | null
 	projectType: string
 	role: string
 	summary: string
@@ -53,6 +54,7 @@ const emptyDraft: ProjectDraft = {
 	id: '',
 	slug: '',
 	title: '',
+	coverImageUrl: null,
 	projectType: '',
 	role: '',
 	summary: '',
@@ -93,6 +95,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 					id: data.project.id,
 					slug: data.project.slug,
 					title: data.project.title,
+					coverImageUrl: null,
 					projectType: data.project.project_type,
 					role: data.project.role,
 					summary: data.project.summary,
@@ -136,7 +139,6 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 		})
 	}
 
-	const getProjectHref = (slug: string) => `/projects/${slug}` as Route
 	const publishedCount = projects.filter((project) => project.status === 'published').length
 	const draftCount = projects.filter((project) => project.status === 'draft').length
 	const archivedCount = projects.filter((project) => project.status === 'archived').length
@@ -286,7 +288,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 							</div>
 						</div>
 
-						<div className='mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3'>
+						<div className='mt-6 grid gap-5 xl:grid-cols-2'>
 							{filteredProjects.length > 0 ? (
 								filteredProjects.map((project, index) => (
 									<ProjectCardPreview
@@ -299,6 +301,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 													: activeFilterLabel.replace(' projects', '')
 										}
 										title={project.title}
+										coverImageUrl={project.coverImageUrl}
 										summary={project.summary}
 										projectType={project.projectType}
 										role={project.role}
@@ -307,43 +310,44 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 										outcome={project.outcome}
 										tools={project.tools}
 										evidenceCount={project.evidenceCount}
-										href={getProjectHref(project.slug)}
+										href={`/projects/${project.slug}` as Route}
+										variant='listing'
 									/>
 								))
 							) : (
-								<div className='md:col-span-2 2xl:col-span-3'>
+								<div className='xl:col-span-2'>
 									<div className='rounded-3xl border border-dashed border-border/70 bg-muted/35 px-5 py-6 dark:border-white/8 dark:bg-white/3'>
-										<div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-											<div className='space-y-2'>
-												<div className='flex items-center gap-3'>
-													{activeFilter !== 'all' ? (
-														<ProjectStatusBadge status={activeFilter} />
-													) : null}
-													<p className='text-sm font-medium text-foreground'>
-														No {activeFilter === 'all' ? '' : `${activeFilter} `}projects yet
-													</p>
-												</div>
-												<p className='max-w-2xl text-sm leading-6 text-muted-foreground'>
-													{activeFilter === 'draft'
-														? 'Start a new project or move an existing one back into draft while you refine it.'
-														: activeFilter === 'published'
-															? 'Publish stronger project entries here once they are ready to represent your work.'
-															: activeFilter === 'archived'
-																? 'Archived projects will appear here once you move them out of the active workspace.'
-																: 'Create the first project entry to start shaping your proof-backed body of work.'}
+									<div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+										<div className='space-y-2'>
+											<div className='flex items-center gap-3'>
+												{activeFilter !== 'all' ? (
+													<ProjectStatusBadge status={activeFilter} />
+												) : null}
+												<p className='text-sm font-medium text-foreground'>
+													No {activeFilter === 'all' ? '' : `${activeFilter} `}projects yet
 												</p>
 											</div>
-
-											<Button
-												type='button'
-												className='rounded-full sm:self-start'
-												onClick={() => setIsDialogOpen(true)}
-											>
-												<Plus className='size-4' />
-												Add new project
-											</Button>
+											<p className='max-w-2xl text-sm leading-6 text-muted-foreground'>
+												{activeFilter === 'draft'
+													? 'Start a new project or move an existing one back into draft while you refine it.'
+													: activeFilter === 'published'
+														? 'Publish stronger project entries here once they are ready to represent your work.'
+														: activeFilter === 'archived'
+															? 'Archived projects will appear here once you move them out of the active workspace.'
+															: 'Create the first project entry to start shaping your proof-backed body of work.'}
+											</p>
 										</div>
+
+										<Button
+											type='button'
+											className='rounded-full sm:self-start'
+											onClick={() => setIsDialogOpen(true)}
+										>
+											<Plus className='size-4' />
+											Add new project
+										</Button>
 									</div>
+								</div>
 								</div>
 							)}
 						</div>

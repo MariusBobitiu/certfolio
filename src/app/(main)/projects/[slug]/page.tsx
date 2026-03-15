@@ -4,6 +4,7 @@ import { and, asc, eq } from 'drizzle-orm'
 
 import { getCurrentSession } from '@/lib/auth/session'
 import { db, ProjectEvidenceLinksTable, ProjectsTable } from '@/lib/db/drizzle'
+import { getProjectAssetUrl } from '@/lib/storage/r2'
 
 import { ProjectDetailForm } from './project-detail-form'
 
@@ -39,6 +40,9 @@ export default async function ProjectDetailPage({
 		.from(ProjectEvidenceLinksTable)
 		.where(eq(ProjectEvidenceLinksTable.project_id, project.id))
 		.orderBy(asc(ProjectEvidenceLinksTable.sort_order))
+	const coverImageUrl = project.cover_image_key
+		? await getProjectAssetUrl(project.cover_image_key)
+		: null
 
 	return (
 		<div className='relative space-y-8 overflow-hidden'>
@@ -74,6 +78,8 @@ export default async function ProjectDetailPage({
 				project={{
 					slug: project.slug,
 					title: project.title,
+					coverImageKey: project.cover_image_key,
+					coverImageUrl,
 					projectType: project.project_type,
 					role: project.role,
 					summary: project.summary,
