@@ -7,6 +7,7 @@ import { db, ProjectEvidenceLinksTable, ProjectsTable } from '@/lib/db/drizzle'
 import { getProjectAssetUrl } from '@/lib/storage/r2'
 
 import { ProjectDetailForm } from './project-detail-form'
+import { ChevronLeft } from 'lucide-react'
 
 export default async function ProjectDetailPage({
 	params,
@@ -54,6 +55,7 @@ export default async function ProjectDetailPage({
 						href='/projects'
 						className='inline-flex text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline'
 					>
+						<ChevronLeft className='mr-1 mt-0.5 h-4 w-4' />
 						Back to projects
 					</Link>
 
