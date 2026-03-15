@@ -33,3 +33,9 @@ export const updateProjectSchema = createProjectSchema.extend({
 })
 
 export type UpdateProjectInput = z.input<typeof updateProjectSchema>
+
+export const deleteProjectSchema = z.object({
+  slug: z.string().trim().min(1, "Project slug is required"),
+})
+
+export type DeleteProjectInput = z.input<typeof deleteProjectSchema>

@@ -1,11 +1,23 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { ImagePlus, LoaderCircle, Plus, Trash2 } from "lucide-react"
 import { useAction } from "next-safe-action/hooks"
 import { useDropzone } from "react-dropzone"
 import { toast } from "sonner"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -25,7 +37,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
-import { updateProjectAction } from "../action"
+import { deleteProjectAction, updateProjectAction } from "../action"
 
 type EvidenceKind =
   | "repository"
@@ -97,10 +109,12 @@ function createEmptyEvidenceLink(): EvidenceLinkFormState {
 }
 
 export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
+  const router = useRouter()
   const [formState, setFormState] = useState<ProjectFormState>(project)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [coverUploadError, setCoverUploadError] = useState<string | null>(null)
   const [isUploadingCover, setIsUploadingCover] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const { execute, isPending, result } = useAction(updateProjectAction, {
     onSuccess: ({ data }) => {
@@ -143,6 +157,28 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 
   const validationErrors =
     (result.validationErrors as ActionValidationErrors | undefined) ?? {}
+
+  const { execute: deleteProject, isPending: isDeletingProject } = useAction(
+    deleteProjectAction,
+    {
+      onSuccess: ({ data }) => {
+        if (data?.failure) {
+          toast.error(data.failure)
+          return
+        }
+
+        toast.success("Project deleted")
+        router.push("/projects")
+      },
+      onError: ({ error }) => {
+        toast.error(
+          error.serverError ?? "We could not delete the project right now."
+        )
+      },
+    }
+  )
+
+  const isBusy = isPending || isUploadingCover || isDeletingProject
 
   const handleChange = <K extends keyof ProjectFormState>(
     field: K,
@@ -260,7 +296,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 
   const { getInputProps, getRootProps, isDragActive, open } = useDropzone({
     accept: { "image/*": [] },
-    disabled: isUploadingCover || isPending,
+    disabled: isBusy,
     multiple: false,
     noClick: true,
     onDropAccepted: (acceptedFiles) => {
@@ -275,6 +311,10 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
       setCoverUploadError("Only image uploads are supported.")
     },
   })
+
+  const handleDeleteProject = () => {
+    deleteProject({ slug: formState.slug })
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
@@ -327,11 +367,46 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={isBusy}
             className="rounded-full xl:shrink-0"
           >
             Save changes
           </Button>
+          <AlertDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+          >
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isBusy}
+                className="rounded-full xl:shrink-0"
+              >
+                <Trash2 className="size-4" />
+                Delete project
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove the project and all of its
+                  evidence links. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isBusy}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  disabled={isBusy}
+                  onClick={handleDeleteProject}
+                >
+                  Delete project
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -557,7 +632,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
                         Drop a new image here or click to replace the current
                         cover.
                       </p>
-                      <span className="inline-flex items-center gap-2 rounded-full border border-border/70 px-3 py-1.5 text-sm font-medium text-foreground dark:border-white/8 cursor-pointer z-20 hover:bg-background/40 transition-colors duration-300">
+                      <span className="z-20 inline-flex cursor-pointer items-center gap-2 rounded-full border border-border/70 px-3 py-1.5 text-sm font-medium text-foreground transition-colors duration-300 hover:bg-background/40 dark:border-white/8">
                         {isUploadingCover ? (
                           <LoaderCircle className="size-4 animate-spin" />
                         ) : (

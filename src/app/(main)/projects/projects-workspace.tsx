@@ -114,7 +114,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
       setDraft(emptyDraft)
       setSubmitError(null)
       setIsDialogOpen(false)
-      router.push(`/projects/${data.project.slug}`)
+      router.push(`/projects/${data.project.slug}` as Route)
     },
     onError: ({ error }) => {
       setSubmitError(

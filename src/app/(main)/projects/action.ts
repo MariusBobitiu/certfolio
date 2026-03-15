@@ -5,8 +5,13 @@ import { and, asc, eq } from "drizzle-orm"
 import { getCurrentSession } from "@/lib/auth/session"
 import { db, ProjectEvidenceLinksTable, ProjectsTable } from "@/lib/db/drizzle"
 import { actionClient } from "@/lib/safe-action"
+import { deleteProjectAsset } from "@/lib/storage/r2"
 
-import { createProjectSchema, updateProjectSchema } from "./schema"
+import {
+  createProjectSchema,
+  deleteProjectSchema,
+  updateProjectSchema,
+} from "./schema"
 
 function slugifyProjectTitle(title: string) {
   return title
@@ -24,7 +29,10 @@ async function generateUniqueProjectSlug(userId: string, title: string) {
 
   while (true) {
     const [existingProject] = await db
-      .select({ id: ProjectsTable.id })
+      .select({
+        id: ProjectsTable.id,
+        coverImageKey: ProjectsTable.cover_image_key,
+      })
       .from(ProjectsTable)
       .where(
         and(
@@ -66,47 +74,53 @@ export const createProjectAction = actionClient
     }))
     const slug = await generateUniqueProjectSlug(session.user.id, title)
 
-    const { project, persistedEvidenceLinks } = await db.transaction(async (tx) => {
-      const [project] = await tx
-        .insert(ProjectsTable)
-        .values({
-          user_id: session.user.id,
-          slug,
-          title,
-          cover_image_key: coverImageKey,
-          project_type: projectType,
-          role,
-          summary,
-          context,
-          outcome,
-          tools,
-          status: "draft",
-          updated_at: new Date(),
-        })
-        .returning()
+    const { project, persistedEvidenceLinks } = await db.transaction(
+      async (tx) => {
+        const [project] = await tx
+          .insert(ProjectsTable)
+          .values({
+            user_id: session.user.id,
+            slug,
+            title,
+            cover_image_key: coverImageKey,
+            project_type: projectType,
+            role,
+            summary,
+            context,
+            outcome,
+            tools,
+            status: "draft",
+            updated_at: new Date(),
+          })
+          .returning()
 
-      if (evidenceLinks.length > 0) {
-        await tx.insert(ProjectEvidenceLinksTable).values(
-          evidenceLinks.map((evidenceLink, index) => ({
-            project_id: project.id,
-            label: evidenceLink.label,
-            url: evidenceLink.url,
-            kind: evidenceLink.kind,
-            sort_order: index,
-          }))
-        )
+        if (evidenceLinks.length > 0) {
+          await tx.insert(ProjectEvidenceLinksTable).values(
+            evidenceLinks.map((evidenceLink, index) => ({
+              project_id: project.id,
+              label: evidenceLink.label,
+              url: evidenceLink.url,
+              kind: evidenceLink.kind,
+              sort_order: index,
+            }))
+          )
+        }
+
+        const persistedEvidenceLinks = await tx
+          .select()
+          .from(ProjectEvidenceLinksTable)
+          .where(eq(ProjectEvidenceLinksTable.project_id, project.id))
+          .orderBy(asc(ProjectEvidenceLinksTable.sort_order))
+
+        return { project, persistedEvidenceLinks }
       }
+    )
 
-      const persistedEvidenceLinks = await tx
-        .select()
-        .from(ProjectEvidenceLinksTable)
-        .where(eq(ProjectEvidenceLinksTable.project_id, project.id))
-        .orderBy(asc(ProjectEvidenceLinksTable.sort_order))
-
-      return { project, persistedEvidenceLinks }
-    })
-
-    return { success: "Project created", project, evidenceLinks: persistedEvidenceLinks }
+    return {
+      success: "Project created",
+      project,
+      evidenceLinks: persistedEvidenceLinks,
+    }
   })
 
 export const updateProjectAction = actionClient
@@ -118,7 +132,10 @@ export const updateProjectAction = actionClient
     }
 
     const [existingProject] = await db
-      .select({ id: ProjectsTable.id })
+      .select({
+        id: ProjectsTable.id,
+        coverImageKey: ProjectsTable.cover_image_key,
+      })
       .from(ProjectsTable)
       .where(
         and(
@@ -138,48 +155,103 @@ export const updateProjectAction = actionClient
       kind: evidenceLink.kind,
     }))
 
-    const { project, persistedEvidenceLinks } = await db.transaction(async (tx) => {
-      const [project] = await tx
-        .update(ProjectsTable)
-        .set({
-          title: parsedInput.title.trim(),
-          cover_image_key: parsedInput.coverImageKey.trim(),
-          project_type: parsedInput.projectType.trim(),
-          role: parsedInput.role.trim(),
-          summary: parsedInput.summary.trim(),
-          context: parsedInput.context.trim(),
-          outcome: parsedInput.outcome.trim(),
-          tools: parsedInput.tools.trim(),
-          status: parsedInput.status,
-          updated_at: new Date(),
-        })
-        .where(eq(ProjectsTable.id, existingProject.id))
-        .returning()
+    const { project, persistedEvidenceLinks } = await db.transaction(
+      async (tx) => {
+        const [project] = await tx
+          .update(ProjectsTable)
+          .set({
+            title: parsedInput.title.trim(),
+            cover_image_key: parsedInput.coverImageKey.trim(),
+            project_type: parsedInput.projectType.trim(),
+            role: parsedInput.role.trim(),
+            summary: parsedInput.summary.trim(),
+            context: parsedInput.context.trim(),
+            outcome: parsedInput.outcome.trim(),
+            tools: parsedInput.tools.trim(),
+            status: parsedInput.status,
+            updated_at: new Date(),
+          })
+          .where(eq(ProjectsTable.id, existingProject.id))
+          .returning()
 
+        await tx
+          .delete(ProjectEvidenceLinksTable)
+          .where(eq(ProjectEvidenceLinksTable.project_id, existingProject.id))
+
+        if (evidenceLinks.length > 0) {
+          await tx.insert(ProjectEvidenceLinksTable).values(
+            evidenceLinks.map((evidenceLink, index) => ({
+              project_id: existingProject.id,
+              label: evidenceLink.label,
+              url: evidenceLink.url,
+              kind: evidenceLink.kind,
+              sort_order: index,
+            }))
+          )
+        }
+
+        const persistedEvidenceLinks = await tx
+          .select()
+          .from(ProjectEvidenceLinksTable)
+          .where(eq(ProjectEvidenceLinksTable.project_id, existingProject.id))
+          .orderBy(asc(ProjectEvidenceLinksTable.sort_order))
+
+        return { project, persistedEvidenceLinks }
+      }
+    )
+
+    return {
+      success: "Project updated",
+      project,
+      evidenceLinks: persistedEvidenceLinks,
+    }
+  })
+
+export const deleteProjectAction = actionClient
+  .inputSchema(deleteProjectSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) {
+      return { failure: "Unauthorized" }
+    }
+
+    const [existingProject] = await db
+      .select({
+        id: ProjectsTable.id,
+        coverImageKey: ProjectsTable.cover_image_key,
+      })
+      .from(ProjectsTable)
+      .where(
+        and(
+          eq(ProjectsTable.user_id, session.user.id),
+          eq(ProjectsTable.slug, parsedInput.slug)
+        )
+      )
+      .limit(1)
+
+    if (!existingProject) {
+      return { failure: "Project not found" }
+    }
+
+    if (existingProject.coverImageKey) {
+      try {
+        await deleteProjectAsset(existingProject.coverImageKey)
+      } catch {
+        return {
+          failure: "We could not delete the project cover image right now.",
+        }
+      }
+    }
+
+    await db.transaction(async (tx) => {
       await tx
         .delete(ProjectEvidenceLinksTable)
         .where(eq(ProjectEvidenceLinksTable.project_id, existingProject.id))
 
-      if (evidenceLinks.length > 0) {
-        await tx.insert(ProjectEvidenceLinksTable).values(
-          evidenceLinks.map((evidenceLink, index) => ({
-            project_id: existingProject.id,
-            label: evidenceLink.label,
-            url: evidenceLink.url,
-            kind: evidenceLink.kind,
-            sort_order: index,
-          }))
-        )
-      }
-
-      const persistedEvidenceLinks = await tx
-        .select()
-        .from(ProjectEvidenceLinksTable)
-        .where(eq(ProjectEvidenceLinksTable.project_id, existingProject.id))
-        .orderBy(asc(ProjectEvidenceLinksTable.sort_order))
-
-      return { project, persistedEvidenceLinks }
+      await tx
+        .delete(ProjectsTable)
+        .where(eq(ProjectsTable.id, existingProject.id))
     })
 
-    return { success: "Project updated", project, evidenceLinks: persistedEvidenceLinks }
+    return { success: "Project deleted" }
   })
