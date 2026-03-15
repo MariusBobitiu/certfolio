@@ -1,5 +1,8 @@
 import { Metadata } from 'next'
 import React from 'react'
+import { Plus } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
 	title: 'Projects - Certfolio',
@@ -34,10 +37,36 @@ const futureSections = [
 	},
 ] as const
 
+const editorialPrompts = [
+	'What problem did this project solve?',
+	'What did you specifically own or deliver?',
+	'What evidence would make this work more credible later?',
+] as const
+
 export default function ProjectsPage() {
 	return (
 		<div className='relative overflow-hidden'>
 			<div className='absolute inset-x-0 top-0 -z-10 h-112 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_30%),linear-gradient(180deg,rgba(148,163,184,0.08),transparent_78%)]' />
+
+			<section className='mb-6 flex flex-col gap-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between'>
+				<div className='max-w-2xl space-y-3'>
+					<p className='text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground'>
+						Projects
+					</p>
+					<h1 className='text-4xl font-semibold tracking-[-0.04em] sm:text-5xl'>
+						Build a body of proof-backed work.
+					</h1>
+					<p className='text-base leading-7 text-muted-foreground sm:text-lg'>
+						Projects in Certfolio should read like credible professional evidence,
+						not just portfolio tiles. Start with one strong entry and expand from there.
+					</p>
+				</div>
+
+				<Button size='lg' className='w-full rounded-full sm:w-auto'>
+					<Plus className='size-4' />
+					Add new project
+				</Button>
+			</section>
 
 			<section className='relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/55 px-6 py-8 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset,0_18px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-10 lg:px-10 lg:py-12 dark:border-white/8 dark:from-background dark:via-card/30 dark:to-card/40 dark:shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]'>
 				<div className='max-w-3xl space-y-6'>
@@ -76,30 +105,46 @@ export default function ProjectsPage() {
 							Collection Surface
 						</p>
 						<h2 className='text-2xl font-semibold tracking-[-0.03em]'>
-							Foundation for the projects workspace
+							No projects yet, but the first one should set the tone
 						</h2>
 						<p className='max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base'>
-							Phase 1 keeps this space intentionally structural. The page now has a
-							clear content hierarchy and room for listing, creation entry points, and
-							project quality guidance without forcing premature implementation choices.
+							A strong Certfolio project explains context, ownership, outcome, and how
+							the work can be trusted. Start with one project you can describe clearly,
+							then deepen it over time.
 						</p>
 					</div>
 
-					<div className='mt-6 grid gap-4 md:grid-cols-3'>
-						{futureSections.map((section) => (
-							<article
-								key={section.title}
-								className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'
-							>
-								<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
-									{section.eyebrow}
+					<div className='mt-6 space-y-5'>
+						<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
+							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
+								Editorial Guidance
+							</p>
+							<div className='mt-4 space-y-3'>
+								{editorialPrompts.map((prompt, index) => (
+									<div key={prompt} className='flex gap-4'>
+										<div className='flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-sm font-medium text-foreground dark:bg-white/[0.06]'>
+											{index + 1}
+										</div>
+										<p className='pt-1 text-sm leading-6 text-muted-foreground sm:text-base'>
+											{prompt}
+										</p>
+									</div>
+								))}
+							</div>
+						</div>
+
+						<div className='flex flex-col gap-3 rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-white/[0.035]'>
+							<div>
+								<p className='text-sm font-medium text-foreground'>Start with a project that can carry your story</p>
+								<p className='mt-1 text-sm leading-6 text-muted-foreground'>
+									Choose work you can explain well now and support with stronger proof later.
 								</p>
-								<h3 className='mt-3 text-base font-semibold leading-6'>{section.title}</h3>
-								<p className='mt-3 text-sm leading-6 text-muted-foreground'>
-									{section.description}
-								</p>
-							</article>
-						))}
+							</div>
+							<Button className='rounded-full sm:self-start'>
+								<Plus className='size-4' />
+								Add new project
+							</Button>
+						</div>
 					</div>
 				</div>
 
@@ -122,16 +167,16 @@ export default function ProjectsPage() {
 						<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
 							<p className='text-sm font-medium text-foreground'>What this phase establishes</p>
 							<p className='mt-2 text-sm leading-6 text-muted-foreground'>
-								A durable hero, sectional rhythm, and visual direction that can absorb
-								empty states, project cards, and detail flows incrementally.
+								A durable header, a clear first action, and an empty state that guides
+								better project storytelling before any real creation flow exists.
 							</p>
 						</div>
 
 						<div className='rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 dark:border-white/10 dark:bg-white/[0.035]'>
 							<p className='text-sm font-medium text-foreground'>Intentionally deferred</p>
 							<p className='mt-2 text-sm leading-6 text-muted-foreground'>
-								Create actions, project data, evidence capture, filters, and editing
-								behavior remain out of scope for this first pass.
+								The CTA is present, but there is still no real create flow, persistence,
+								project listing, or editing behavior in this phase.
 							</p>
 						</div>
 					</div>
