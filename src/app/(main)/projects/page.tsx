@@ -34,7 +34,7 @@ export default async function ProjectsPage() {
 
 	return (
 		<div className='relative overflow-hidden'>
-			<div className='absolute inset-x-0 top-0 -z-10 h-112 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_30%),linear-gradient(180deg,rgba(148,163,184,0.08),transparent_78%)]' />
+			<div className='absolute inset-x-0 top-0 -z-10 h-112 bg-[radial-gradient(circle_at_top_left,rgba(29,78,216,0.18),transparent_42%),radial-gradient(circle_at_top_right,rgba(3,105,161,0.16),transparent_30%),linear-gradient(180deg,rgba(100,116,139,0.1),transparent_78%)]' />
 
 			{hasProjects ? (
 				<section className='relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/45 px-6 py-6 shadow-lg sm:px-8 sm:py-7 dark:border-white/8 dark:from-background dark:via-card/20 dark:to-card/30 dark:shadow-white/2'>

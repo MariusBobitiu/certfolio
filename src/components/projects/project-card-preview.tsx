@@ -37,7 +37,7 @@ export function ProjectCardPreview({
 	return (
 		<article
 			className={cn(
-				'flex flex-col rounded-3xl border border-border/70 bg-linear-to-br from-secondary/55 via-card to-card p-5 dark:border-white/7 dark:from-[#121319] dark:via-[#101116] dark:to-[#14161d]',
+				'flex flex-col rounded-3xl border border-border/70 bg-linear-to-br from-secondary/55 via-card to-primary/5 p-5 dark:border-white/7 dark:from-secondary/30 dark:via-card/30 dark:to-primary/10',
 				isPreview ? 'min-h-0' : 'group h-full min-h-112 transition-colors hover:border-border/90',
 				className,
 			)}

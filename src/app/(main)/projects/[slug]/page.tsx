@@ -36,7 +36,7 @@ export default async function ProjectDetailPage({
 
 	return (
 		<div className='relative space-y-8 overflow-hidden'>
-			<div className='absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_36%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(148,163,184,0.06),transparent_78%)]' />
+			<div className='absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(circle_at_top_left,rgba(29,78,216,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(3,105,161,0.1),transparent_28%),linear-gradient(180deg,rgba(100,116,139,0.08),transparent_78%)]' />
 
 			<section className='rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/45 px-6 py-7 shadow-lg sm:px-8 sm:py-8 dark:border-white/8 dark:from-background dark:via-card/20 dark:to-card/30 dark:shadow-white/2'>
 				<div className='space-y-5'>
