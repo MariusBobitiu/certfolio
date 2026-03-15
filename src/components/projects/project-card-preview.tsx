@@ -16,6 +16,10 @@ type ProjectCardPreviewProps = {
 	projectType: string
 	role: string
 	status: ProjectStatus
+	context?: string
+	outcome?: string
+	tools?: string
+	evidenceCount?: number
 	variant?: 'listing' | 'preview'
 	href?: Route
 	className?: string
@@ -28,11 +32,24 @@ export function ProjectCardPreview({
 	projectType,
 	role,
 	status,
+	context = '',
+	outcome = '',
+	tools = '',
+	evidenceCount = 0,
 	variant = 'listing',
 	href,
 	className,
 }: ProjectCardPreviewProps) {
 	const isPreview = variant === 'preview'
+	const hasProofSignals = Boolean(context || outcome || tools || evidenceCount > 0)
+	const proofSignals = [
+		context ? 'Context' : null,
+		outcome ? 'Outcome' : null,
+		tools ? 'Stack' : null,
+		evidenceCount > 0
+			? `${evidenceCount} evidence`
+			: null,
+	].filter(Boolean) as string[]
 
 	return (
 		<article
@@ -54,7 +71,7 @@ export function ProjectCardPreview({
 					{href ? (
 						<Link
 							href={href}
-							className='line-clamp-2 min-h-18 text-2xl font-semibold tracking-[-0.04em] text-foreground transition-opacity hover:opacity-80'
+							className='line-clamp-2 min-h-16 text-2xl font-semibold tracking-[-0.04em] text-foreground transition-opacity hover:opacity-80'
 						>
 							{title}
 						</Link>
@@ -72,7 +89,7 @@ export function ProjectCardPreview({
 					<p
 						className={cn(
 							'text-sm leading-7 text-muted-foreground',
-							isPreview ? 'sm:line-clamp-5 sm:min-h-32' : 'line-clamp-4 min-h-46',
+							isPreview ? 'sm:line-clamp-5 sm:min-h-32' : 'line-clamp-4 min-h-32',
 						)}
 					>
 						{summary}
@@ -84,6 +101,25 @@ export function ProjectCardPreview({
 				<CustomBadge label='Type' value={projectType} />
 				<CustomBadge label='Role' value={role} />
 			</div>
+
+			{!isPreview && hasProofSignals ? (
+				<div className='mt-5 border-t border-border/50 pt-4 dark:border-white/8'>
+					<p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground'>
+						Proof signals
+					</p>
+					<div className='mt-2 flex flex-wrap gap-x-3 gap-y-2'>
+					{proofSignals.map((signal) => (
+						<div
+							key={signal}
+							className='inline-flex items-center gap-2 text-xs font-medium text-muted-foreground'
+						>
+							<div className='size-1.5 rounded-full bg-primary/70' />
+							{signal}
+						</div>
+					))}
+					</div>
+				</div>
+			) : null}
 
 			<div className={cn(isPreview ? 'pt-6' : 'mt-auto pt-4')}>
 				{href ? (

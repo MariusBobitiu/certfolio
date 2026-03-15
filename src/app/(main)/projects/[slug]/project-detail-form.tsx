@@ -196,8 +196,9 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 	return (
 		<form onSubmit={handleSubmit} className='space-y-6 sm:space-y-8'>
 			<div className='rounded-4xl border border-border/70 bg-card/92 px-5 py-4 shadow-md backdrop-blur sm:px-6 dark:border-white/8 dark:shadow-white/2'>
-				<div className='grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] lg:items-center'>
-					<div className='flex items-center gap-3'>
+				<div className='flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between'>
+					<div className='grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] lg:items-center xl:flex-1'>
+						<div className='flex items-center gap-3'>
 						<div
 							className={`size-2.5 rounded-full ${
 								formState.status === 'published'
@@ -207,7 +208,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 										: 'bg-amber-500'
 							}`}
 						/>
-						<span className='text-sm text-muted-foreground'>Status</span>
+							<span className='text-sm text-muted-foreground'>Status</span>
 						<Select
 							value={formState.status}
 							onValueChange={(value) =>
@@ -224,25 +225,41 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 								<SelectItem value='archived'>Archived</SelectItem>
 							</SelectContent>
 						</Select>
+						</div>
+
+						<div className='flex items-center gap-3'>
+							<span className='text-sm text-muted-foreground'>Type</span>
+							<span className='text-base font-medium text-foreground'>
+								{formState.projectType || 'Not set'}
+							</span>
+						</div>
+
+						<div className='flex items-center gap-3'>
+							<span className='text-sm text-muted-foreground'>Role</span>
+							<span className='text-base font-medium text-foreground'>
+								{formState.role || 'Not set'}
+							</span>
+						</div>
 					</div>
 
-					<div className='flex items-center gap-3'>
-						<span className='text-sm text-muted-foreground'>Type</span>
-						<span className='text-base font-medium text-foreground'>
-							{formState.projectType || 'Not set'}
-						</span>
-					</div>
-
-					<div className='flex items-center gap-3'>
-						<span className='text-sm text-muted-foreground'>Role</span>
-						<span className='text-base font-medium text-foreground'>
-							{formState.role || 'Not set'}
-						</span>
-					</div>
+					<Button
+						type='submit'
+						disabled={isPending}
+						className='rounded-full xl:shrink-0'
+					>
+						Save changes
+					</Button>
 				</div>
 			</div>
 
-			<div className='grid gap-10 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] xl:items-start'>
+			<FieldError
+				errors={[{ message: validationErrors.status?._errors?.[0] }]}
+			/>
+			<FieldError
+				errors={submitError ? [{ message: submitError }] : []}
+			/>
+
+			<div className='grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] xl:items-start'>
 				<div className='space-y-8'>
 					<div className='space-y-3'>
 						<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
@@ -399,61 +416,89 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 								/>
 							</Field>
 						</div>
+					</FieldGroup>
+				</div>
 
-						<FieldSeparator>Evidence links</FieldSeparator>
+				<aside className='space-y-6 xl:sticky xl:top-28'>
+					<div className='rounded-4xl border border-border/70 bg-card/88 p-6 shadow-md sm:p-7 dark:border-white/8 dark:shadow-white/2'>
+						<div className='space-y-2'>
+							<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
+								Live Preview
+							</p>
+							<p className='text-sm leading-6 text-muted-foreground'>
+								How the project reads right now.
+							</p>
+						</div>
 
-						<div className='space-y-5'>
-							<div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
-								<div className='space-y-2'>
-									<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
-										Supporting evidence
-									</p>
-									<p className='max-w-2xl text-sm leading-6 text-muted-foreground'>
-										Add links that support the work: a repository, demo, write-up,
-										documentation, or another artifact.
-									</p>
-								</div>
+						<div className='mt-5'>
+							<ProjectCardPreview
+								eyebrow='Preview'
+								title={formState.title || 'Untitled project'}
+								summary={
+									formState.summary ||
+									'Add a concise summary so the project reads clearly at a glance.'
+								}
+								projectType={formState.projectType || 'Not set'}
+								role={formState.role || 'Not set'}
+								status={formState.status}
+								variant='preview'
+							/>
+						</div>
+					</div>
 
-								<Button
-									type='button'
-									variant='outline'
-									size='sm'
-									onClick={addEvidenceLink}
-									className='rounded-full'
-								>
-									<Plus className='size-4' />
-									Add evidence
-								</Button>
+					<div className='rounded-4xl border border-border/70 bg-card/88 p-6 shadow-md sm:p-7 dark:border-white/8 dark:shadow-white/2'>
+						<div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+							<div className='space-y-2'>
+								<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
+									Supporting evidence
+								</p>
+								<p className='text-sm leading-6 text-muted-foreground'>
+									Links that support the work: repositories, demos, write-ups, and
+									other proof points.
+								</p>
 							</div>
 
-							<div className='space-y-4'>
-								{formState.evidenceLinks.length === 0 ? (
-									<div className='rounded-3xl border border-dashed border-border/70 bg-card/40 px-5 py-4 text-sm leading-6 text-muted-foreground dark:border-white/8'>
-										No evidence links yet. Add the strongest public proof you can
-										share for this project.
-									</div>
-								) : (
-									formState.evidenceLinks.map((evidenceLink, index) => (
-										<div
-											key={evidenceLink.id}
-											className='space-y-4 rounded-3xl border border-border/60 bg-card/40 px-4 py-4 dark:border-white/8'
-										>
-											<div className='flex items-center justify-between gap-3'>
-												<p className='text-sm font-medium text-foreground'>
-													Evidence link {index + 1}
-												</p>
-												<Button
-													type='button'
-													variant='ghost'
-													size='icon-sm'
-													onClick={() => removeEvidenceLink(index)}
-													aria-label={`Remove evidence link ${index + 1}`}
-												>
-													<Trash2 className='size-4' />
-												</Button>
-											</div>
+							<Button
+								type='button'
+								variant='outline'
+								size='sm'
+								onClick={addEvidenceLink}
+								className='rounded-full sm:self-start'
+							>
+								<Plus className='size-4' />
+								Add evidence
+							</Button>
+						</div>
 
-											<div className='grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]'>
+						<div className='mt-5 space-y-3'>
+							{formState.evidenceLinks.length === 0 ? (
+								<div className='rounded-3xl border border-dashed border-border/70 bg-card/40 px-5 py-4 text-sm leading-6 text-muted-foreground dark:border-white/8'>
+									No evidence links yet. Add the strongest public proof you can
+									share for this project.
+								</div>
+							) : (
+								formState.evidenceLinks.map((evidenceLink, index) => (
+									<div
+										key={evidenceLink.id}
+										className='rounded-3xl border border-border/60 bg-card/40 p-4 dark:border-white/8'
+									>
+										<div className='flex items-center justify-between gap-3'>
+											<p className='text-sm font-medium text-foreground'>
+												Evidence {index + 1}
+											</p>
+											<Button
+												type='button'
+												variant='ghost'
+												size='icon-sm'
+												onClick={() => removeEvidenceLink(index)}
+												aria-label={`Remove evidence link ${index + 1}`}
+											>
+												<Trash2 className='size-4' />
+											</Button>
+										</div>
+
+										<div className='mt-4 space-y-4'>
+											<div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]'>
 												<Field>
 													<FieldLabel htmlFor={`evidence-label-${index}`}>
 														Label
@@ -536,49 +581,10 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 												/>
 											</Field>
 										</div>
-									))
-								)}
-							</div>
+									</div>
+								))
+							)}
 						</div>
-
-						<FieldError
-							errors={[{ message: validationErrors.status?._errors?.[0] }]}
-						/>
-						<FieldError
-							errors={submitError ? [{ message: submitError }] : []}
-						/>
-
-						<div className='flex justify-end border-t border-border/60 pt-4'>
-							<Button type='submit' disabled={isPending} className='rounded-full'>
-								Save changes
-							</Button>
-						</div>
-					</FieldGroup>
-				</div>
-
-				<aside className='rounded-4xl border border-border/70 bg-card/88 p-6 shadow-md sm:p-7 xl:sticky xl:top-28 dark:border-white/8 dark:shadow-white/2'>
-					<div className='space-y-2'>
-						<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
-							Live Preview
-						</p>
-						<p className='text-sm leading-6 text-muted-foreground'>
-							How the project reads right now.
-						</p>
-					</div>
-
-					<div className='mt-5'>
-						<ProjectCardPreview
-							eyebrow='Preview'
-							title={formState.title || 'Untitled project'}
-							summary={
-								formState.summary ||
-								'Add a concise summary so the project reads clearly at a glance.'
-							}
-							projectType={formState.projectType || 'Not set'}
-							role={formState.role || 'Not set'}
-							status={formState.status}
-							variant='preview'
-						/>
 					</div>
 				</aside>
 			</div>

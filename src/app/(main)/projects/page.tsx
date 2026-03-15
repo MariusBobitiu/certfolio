@@ -1,8 +1,8 @@
 import { Metadata } from 'next'
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, inArray } from 'drizzle-orm'
 
 import { getCurrentSession } from '@/lib/auth/session'
-import { db, ProjectsTable } from '@/lib/db/drizzle'
+import { db, ProjectEvidenceLinksTable, ProjectsTable } from '@/lib/db/drizzle'
 
 import { ProjectsWorkspace } from './projects-workspace'
 
@@ -30,6 +30,24 @@ export default async function ProjectsPage() {
 				.where(eq(ProjectsTable.user_id, session.user.id))
 				.orderBy(desc(ProjectsTable.created_at))
 		: []
+	const evidenceLinks =
+		projects.length > 0
+			? await db
+					.select({
+						projectId: ProjectEvidenceLinksTable.project_id,
+					})
+					.from(ProjectEvidenceLinksTable)
+					.where(
+						inArray(
+							ProjectEvidenceLinksTable.project_id,
+							projects.map((project) => project.id)
+						)
+					)
+			: []
+	const evidenceCountMap = evidenceLinks.reduce<Record<string, number>>((accumulator, link) => {
+		accumulator[link.projectId] = (accumulator[link.projectId] ?? 0) + 1
+		return accumulator
+	}, {})
 	const hasProjects = projects.length > 0
 
 	return (
@@ -105,6 +123,10 @@ export default async function ProjectsPage() {
 					projectType: project.project_type,
 					role: project.role,
 					summary: project.summary,
+					context: project.context,
+					outcome: project.outcome,
+					tools: project.tools,
+					evidenceCount: evidenceCountMap[project.id] ?? 0,
 					status: project.status,
 				}))}
 			/>

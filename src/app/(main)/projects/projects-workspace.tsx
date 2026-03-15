@@ -40,6 +40,10 @@ type ProjectDraft = {
 	projectType: string
 	role: string
 	summary: string
+	context: string
+	outcome: string
+	tools: string
+	evidenceCount: number
 	status: 'draft' | 'published' | 'archived'
 }
 
@@ -52,6 +56,10 @@ const emptyDraft: ProjectDraft = {
 	projectType: '',
 	role: '',
 	summary: '',
+	context: '',
+	outcome: '',
+	tools: '',
+	evidenceCount: 0,
 	status: 'draft',
 }
 
@@ -88,6 +96,10 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 					projectType: data.project.project_type,
 					role: data.project.role,
 					summary: data.project.summary,
+					context: data.project.context,
+					outcome: data.project.outcome,
+					tools: data.project.tools,
+					evidenceCount: data.evidenceLinks?.length ?? 0,
 					status: data.project.status,
 				},
 				...current,
@@ -291,12 +303,16 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 										projectType={project.projectType}
 										role={project.role}
 										status={project.status}
+										context={project.context}
+										outcome={project.outcome}
+										tools={project.tools}
+										evidenceCount={project.evidenceCount}
 										href={getProjectHref(project.slug)}
 									/>
 								))
 							) : (
 								<div className='md:col-span-2 2xl:col-span-3'>
-									<div className='rounded-3xl border border-dashed border-border/70 bg-muted/35 px-5 py-6 dark:border-white/8 dark:bg-white/[0.03]'>
+									<div className='rounded-3xl border border-dashed border-border/70 bg-muted/35 px-5 py-6 dark:border-white/8 dark:bg-white/3'>
 										<div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
 											<div className='space-y-2'>
 												<div className='flex items-center gap-3'>
