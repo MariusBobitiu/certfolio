@@ -35,75 +35,45 @@ export default async function ProjectDetailPage({
 	}
 
 	return (
-		<div className='space-y-8'>
-			<div className='space-y-3'>
-				<Link
-					href='/projects'
-					className='text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline'
-				>
-					Back to projects
-				</Link>
-				<div className='space-y-2'>
-					<p className='text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground'>
-						Project
-					</p>
-					<h1 className='text-4xl font-semibold tracking-[-0.04em] sm:text-5xl'>
-						{project.title}
-					</h1>
-					<p className='max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg'>
-						Use this space to refine the project entry before richer fields, evidence,
-						and profile reuse are added.
-					</p>
+		<div className='relative space-y-8 overflow-hidden'>
+			<div className='absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_36%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_28%),linear-gradient(180deg,rgba(148,163,184,0.06),transparent_78%)]' />
+
+			<section className='rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/45 px-6 py-7 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset,0_18px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-8 dark:border-white/8 dark:from-background dark:via-card/20 dark:to-card/30 dark:shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]'>
+				<div className='space-y-5'>
+					<Link
+						href='/projects'
+						className='inline-flex text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline'
+					>
+						Back to projects
+					</Link>
+
+					<div className='flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between'>
+						<div className='max-w-3xl space-y-3'>
+							<p className='text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground'>
+								Project Workspace
+							</p>
+							<h1 className='text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl'>
+								{project.title}
+							</h1>
+							<p className='text-base leading-7 text-muted-foreground sm:text-lg'>
+								Refine the project entry now, then extend it later with richer
+								storytelling, evidence, and profile-ready presentation.
+							</p>
+						</div>
+					</div>
 				</div>
-			</div>
+			</section>
 
-			<div className='grid gap-6 lg:grid-cols-[1.45fr_0.85fr]'>
-				<ProjectDetailForm
-					project={{
-						slug: project.slug,
-						title: project.title,
-						projectType: project.project_type,
-						role: project.role,
-						summary: project.summary,
-						status: project.status,
-					}}
-				/>
-
-				<aside className='rounded-4xl border border-border/70 bg-card/90 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
-					<div className='space-y-3'>
-						<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
-							Current Snapshot
-						</p>
-						<h2 className='text-2xl font-semibold tracking-[-0.03em]'>
-							Basic project metadata
-						</h2>
-						<p className='text-sm leading-6 text-muted-foreground sm:text-base'>
-							This panel keeps the current project identity visible while you edit the
-							core fields.
-						</p>
-					</div>
-
-					<div className='mt-6 flex flex-wrap gap-3'>
-						<div className='rounded-full border border-border/70 bg-secondary/45 px-4 py-2 text-sm dark:border-white/7 dark:bg-[#101116]'>
-							Status: {project.status}
-						</div>
-						<div className='rounded-full border border-border/70 bg-secondary/45 px-4 py-2 text-sm dark:border-white/7 dark:bg-[#101116]'>
-							Type: {project.project_type}
-						</div>
-						<div className='rounded-full border border-border/70 bg-secondary/45 px-4 py-2 text-sm dark:border-white/7 dark:bg-[#101116]'>
-							Role: {project.role}
-						</div>
-					</div>
-
-					<div className='mt-6 rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 dark:border-white/10 dark:bg-white/[0.035]'>
-						<p className='text-sm font-medium text-foreground'>What still comes later</p>
-						<p className='mt-2 text-sm leading-6 text-muted-foreground'>
-							Evidence, richer storytelling fields, credential links, and public-profile
-							reuse are intentionally deferred until the base route and editing flow are stable.
-						</p>
-					</div>
-				</aside>
-			</div>
+			<ProjectDetailForm
+				project={{
+					slug: project.slug,
+					title: project.title,
+					projectType: project.project_type,
+					role: project.role,
+					summary: project.summary,
+					status: project.status,
+				}}
+			/>
 		</div>
 	)
 }

@@ -24,8 +24,8 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
 import { createProjectAction } from './action'
+import { CustomBadge } from '@/components/custom-badge'
 
 const editorialPrompts = [
 	'What problem did this project solve?',
@@ -62,32 +62,6 @@ type ActionValidationErrors = {
 	projectType?: { _errors?: string[] }
 	role?: { _errors?: string[] }
 	summary?: { _errors?: string[] }
-}
-
-function ProjectMetaBadge({
-	label,
-	value,
-	className,
-}: {
-	label: string
-	value: string
-	className?: string
-}) {
-	return (
-		<div
-			className={cn(
-				'relative pt-2',
-				className,
-			)}
-		>
-			<span className='absolute left-3 top-1.25 z-10 px-1 text-[6px] font-semibold uppercase tracking-[0.18em] text-muted-foreground bg-card/88 border-t border-border/70 dark:border-white/8 rounded-full'>
-				{label}
-			</span>
-			<span className='inline-flex h-10 w-full items-center rounded-full border border-border/70 bg-card/88 px-6 text-sm text-foreground dark:border-white/8'>
-				{value}
-			</span>
-		</div>
-	)
 }
 
 export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
@@ -256,12 +230,12 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 											</div>
 										</div>
 
-										<div className='mt-6 flex min-h-23 flex-wrap content-start gap-2'>
-											<ProjectMetaBadge label='Type' value={project.projectType} />
-											<ProjectMetaBadge label='Role' value={project.role} />
+										<div className='mt-6 flex flex-wrap content-start gap-2'>
+											<CustomBadge label='Type' value={project.projectType} />
+											<CustomBadge label='Role' value={project.role} />
 										</div>
 
-										<div className='mt-auto pt-8'>
+										<div className='mt-auto pt-4'>
 											<Link
 												href={getProjectHref(project.slug)}
 												className='inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline'

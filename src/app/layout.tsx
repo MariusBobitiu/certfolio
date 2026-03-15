@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils";
 import { Metadata } from "next";
+import { Toaster } from "@/components/ui/sonner";
 
 const raleway = Raleway({subsets:['latin'],variable:'--font-sans'})
 
@@ -34,7 +35,12 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", raleway.variable)}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        "font-sans",
+        raleway.variable
+      )}
     >
       <body>
         <ThemeProvider
@@ -44,6 +50,7 @@ export default async function RootLayout({
           storageKey="theme"
         >
           <TooltipProvider>{children}</TooltipProvider>
+          <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>
     </html>
