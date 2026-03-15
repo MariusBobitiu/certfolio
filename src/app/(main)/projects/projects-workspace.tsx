@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import type { Route } from 'next'
-import Link from 'next/link'
 import { useAction } from 'next-safe-action/hooks'
-import { ArrowUpRight, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 
+import { ProjectCardPreview } from '@/components/projects/project-card-preview'
 import { Button } from '@/components/ui/button'
 import {
 	Dialog,
@@ -25,7 +25,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { createProjectAction } from './action'
-import { CustomBadge } from '@/components/custom-badge'
 
 const editorialPrompts = [
 	'What problem did this project solve?',
@@ -196,55 +195,16 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 
 						<div className='mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3'>
 								{projects.map((project, index) => (
-									<article
+									<ProjectCardPreview
 										key={project.id}
-										className='group flex h-full min-h-112 flex-col rounded-3xl border border-border/70 bg-linear-to-br from-secondary/55 via-card to-card p-5 transition-colors hover:border-border/90 dark:border-white/7 dark:from-[#121319] dark:via-[#101116] dark:to-[#14161d]'
-									>
-										<div className='space-y-4'>
-											<div className='flex items-center justify-between gap-3'>
-												<div className='inline-flex items-center rounded-full border border-border/70 bg-card px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-white/8 dark:bg-white/4'>
-													{index === 0 ? 'Most recent' : 'Project'}
-												</div>
-												<div
-													className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-														project.status === 'published'
-															? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-															: project.status === 'archived'
-																? 'bg-muted text-muted-foreground'
-																: 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
-													}`}
-												>
-													{project.status}
-												</div>
-											</div>
-											<div className='space-y-3'>
-												<Link
-													href={getProjectHref(project.slug)}
-													className='line-clamp-2 min-h-18 text-2xl font-semibold tracking-[-0.04em] text-foreground transition-opacity hover:opacity-80'
-												>
-													{project.title}
-												</Link>
-												<p className='min-h-46 text-sm leading-7 text-muted-foreground line-clamp-4'>
-													{project.summary}
-												</p>
-											</div>
-										</div>
-
-										<div className='mt-6 flex flex-wrap content-start gap-2'>
-											<CustomBadge label='Type' value={project.projectType} />
-											<CustomBadge label='Role' value={project.role} />
-										</div>
-
-										<div className='mt-auto pt-4'>
-											<Link
-												href={getProjectHref(project.slug)}
-												className='inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline'
-											>
-												Open project
-												<ArrowUpRight className='size-4' />
-											</Link>
-										</div>
-									</article>
+										eyebrow={index === 0 ? 'Most recent' : 'Project'}
+										title={project.title}
+										summary={project.summary}
+										projectType={project.projectType}
+										role={project.role}
+										status={project.status}
+										href={getProjectHref(project.slug)}
+									/>
 								))}
 						</div>
 					</div>

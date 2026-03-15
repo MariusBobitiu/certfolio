@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAction } from 'next-safe-action/hooks'
 
+import { ProjectCardPreview } from '@/components/projects/project-card-preview'
 import { Button } from '@/components/ui/button'
 import {
 	Field,
@@ -15,7 +16,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { updateProjectAction } from '../action'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { CustomBadge } from '@/components/custom-badge'
 import { toast } from 'sonner'
 
 type ProjectDetailFormProps = {
@@ -42,13 +42,11 @@ type ActionValidationErrors = {
 export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 	const [formState, setFormState] = useState<ProjectFormState>(project)
 	const [submitError, setSubmitError] = useState<string | null>(null)
-	const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
 	const { execute, isPending, result } = useAction(updateProjectAction, {
 		onSuccess: ({ data }) => {
 			if (data?.failure || !data?.project) {
 				setSubmitError(data?.failure ?? "We could not update the project right now.")
-				setSuccessMessage(null)
 				return
 			}
 
@@ -65,7 +63,6 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 		},
 		onError: ({ error }) => {
 			setSubmitError(error.serverError ?? "We could not update the project right now.")
-			setSuccessMessage(null)
 		},
 	})
 	const validationErrors = (result.validationErrors as ActionValidationErrors | undefined) ?? {}
@@ -73,9 +70,6 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 	const handleChange = <K extends keyof ProjectFormState>(field: K, value: ProjectFormState[K]) => {
 		if (submitError) {
 			setSubmitError(null)
-		}
-		if (successMessage) {
-			setSuccessMessage(null)
 		}
 
 		setFormState((current) => ({
@@ -87,16 +81,8 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 		setSubmitError(null)
-		setSuccessMessage(null)
 		execute(formState)
 	}
-
-	const statusTone =
-		formState.status === 'published'
-			? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-			: formState.status === 'archived'
-				? 'bg-muted text-muted-foreground'
-				: 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
 
 	return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -234,9 +220,6 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
               <FieldError
                 errors={submitError ? [{ message: submitError }] : []}
               />
-              {successMessage ? (
-                <p className="text-sm text-primary">{successMessage}</p>
-              ) : null}
 
               <div className="flex justify-end border-t border-border/60 pt-4">
                 <Button
@@ -261,50 +244,18 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
             </p>
           </div>
 
-          <article className="mt-8 flex min-h-64 flex-col rounded-3xl border border-border/70 bg-linear-to-br from-secondary/55 via-card to-card p-5 dark:border-white/7 dark:from-[#121319] dark:via-[#101116] dark:to-[#14161d]">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="inline-flex items-center rounded-full border border-border/70 bg-card px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase dark:border-white/8 dark:bg-white/4">
-                  Preview
-                </div>
-                <div
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.18em] capitalize ${statusTone}`}
-                >
-                  {formState.status}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="line-clamp-2 min-h-12 text-3xl font-semibold tracking-[-0.04em] text-balance text-foreground">
-                  {formState.title || "Untitled project"}
-                </h3>
-                <p className="line-clamp-5 min-h-32 text-sm leading-7 text-muted-foreground">
-                  {formState.summary ||
-                    "Add a concise summary so the project reads clearly at a glance."}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap content-start gap-2">
-              {/* <div className="rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm dark:border-white/8 dark:bg-white/4">
-                Type: {formState.projectType || "Not set"}
-              </div>
-              <div className="rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm dark:border-white/8 dark:bg-white/4">
-                Role: {formState.role || "Not set"}
-              </div> */}
-              <CustomBadge
-                label="Type"
-                value={formState.projectType || "Not set"}
-              />
-              <CustomBadge label="Role" value={formState.role || "Not set"} />
-            </div>
-
-            <div className="mt-auto pt-4">
-              <p className="text-sm font-medium text-primary">
-                How this card would read to someone else
-              </p>
-            </div>
-          </article>
+          <ProjectCardPreview
+            eyebrow="Preview"
+            title={formState.title || "Untitled project"}
+            summary={
+              formState.summary ||
+              "Add a concise summary so the project reads clearly at a glance."
+            }
+            projectType={formState.projectType || "Not set"}
+            role={formState.role || "Not set"}
+            status={formState.status}
+            variant="preview"
+          />
         </aside>
       </div>
     </form>
