@@ -55,6 +55,9 @@ export const createProjectAction = actionClient
     const projectType = parsedInput.projectType.trim()
     const role = parsedInput.role.trim()
     const summary = parsedInput.summary.trim()
+    const context = parsedInput.context.trim()
+    const outcome = parsedInput.outcome.trim()
+    const tools = parsedInput.tools.trim()
     const slug = await generateUniqueProjectSlug(session.user.id, title)
 
     const [project] = await db
@@ -66,6 +69,9 @@ export const createProjectAction = actionClient
         project_type: projectType,
         role,
         summary,
+        context,
+        outcome,
+        tools,
         status: "draft",
         updated_at: new Date(),
       })
@@ -104,6 +110,9 @@ export const updateProjectAction = actionClient
         project_type: parsedInput.projectType.trim(),
         role: parsedInput.role.trim(),
         summary: parsedInput.summary.trim(),
+        context: parsedInput.context.trim(),
+        outcome: parsedInput.outcome.trim(),
+        tools: parsedInput.tools.trim(),
         status: parsedInput.status,
         updated_at: new Date(),
       })

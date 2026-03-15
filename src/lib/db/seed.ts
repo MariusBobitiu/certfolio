@@ -24,6 +24,11 @@ const demoProjects = [
     title: "Certification Ops Dashboard",
     summary:
       "Designed and implemented an internal dashboard that reduced time spent tracking certification renewals and surfaced overdue renewals earlier for the team.",
+    context:
+      "The team was tracking renewals manually across scattered spreadsheets and inbox reminders, which made overdue items hard to spot early.",
+    outcome:
+      "Created a single operational view that made renewal risk visible earlier and reduced recurring admin overhead for the team.",
+    tools: "Next.js, PostgreSQL, Drizzle, Tailwind CSS",
     project_type: "Software",
     role: "Product engineer",
     status: "published" as const,
@@ -33,6 +38,11 @@ const demoProjects = [
     title: "Homelab Zero-Touch Deployments",
     summary:
       "Built an infrastructure automation workflow for repeatable homelab provisioning, covering base configuration, service rollout, and ongoing maintenance tasks.",
+    context:
+      "Provisioning and rebuilding homelab environments repeatedly was inconsistent and time-consuming, especially when testing service changes.",
+    outcome:
+      "Reduced rebuild friction and made infrastructure changes more repeatable, which improved confidence when iterating on services.",
+    tools: "Terraform, Ansible, Docker, Linux",
     project_type: "Infrastructure",
     role: "Systems engineer",
     status: "published" as const,
@@ -42,6 +52,11 @@ const demoProjects = [
     title: "SOC Lab Incident Playbooks",
     summary:
       "Created a security lab project focused on documenting response playbooks for common alert patterns, with an emphasis on clarity, triage speed, and repeatability.",
+    context:
+      "Repeated alert investigations were producing inconsistent response quality because there was no clear shared playbook for common patterns.",
+    outcome:
+      "Produced clearer incident response guidance that improved repeatability and gave junior analysts a stronger starting point during triage.",
+    tools: "Wazuh, Elastic, Markdown, Kali Linux",
     project_type: "Security",
     role: "Security analyst",
     status: "draft" as const,
@@ -89,6 +104,19 @@ export async function seedDatabase(options: SeedOptions = {}) {
         .limit(1)
 
       if (existingProject) {
+        await db
+          .update(ProjectsTable)
+          .set({
+            title: project.title,
+            summary: project.summary,
+            context: project.context,
+            outcome: project.outcome,
+            tools: project.tools,
+            project_type: project.project_type,
+            role: project.role,
+            status: project.status,
+          })
+          .where(eq(ProjectsTable.id, existingProject.id))
         continue
       }
 
@@ -97,6 +125,9 @@ export async function seedDatabase(options: SeedOptions = {}) {
         slug: project.slug,
         title: project.title,
         summary: project.summary,
+        context: project.context,
+        outcome: project.outcome,
+        tools: project.tools,
         project_type: project.project_type,
         role: project.role,
         status: project.status,

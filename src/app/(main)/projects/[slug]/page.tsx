@@ -71,6 +71,9 @@ export default async function ProjectDetailPage({
 					projectType: project.project_type,
 					role: project.role,
 					summary: project.summary,
+					context: project.context,
+					outcome: project.outcome,
+					tools: project.tools,
 					status: project.status,
 				}}
 			/>

@@ -5,6 +5,9 @@ export const createProjectSchema = z.object({
   projectType: z.string().trim().min(1, "Project type is required"),
   role: z.string().trim().min(1, "Role is required"),
   summary: z.string().trim().min(1, "Project summary is required"),
+  context: z.string().trim().optional().default(""),
+  outcome: z.string().trim().optional().default(""),
+  tools: z.string().trim().optional().default(""),
 })
 
 export type CreateProjectInput = z.input<typeof createProjectSchema>

@@ -25,6 +25,9 @@ type ProjectDetailFormProps = {
 		projectType: string
 		role: string
 		summary: string
+		context: string
+		outcome: string
+		tools: string
 		status: 'draft' | 'published' | 'archived'
 	}
 }
@@ -36,6 +39,9 @@ type ActionValidationErrors = {
 	projectType?: { _errors?: string[] }
 	role?: { _errors?: string[] }
 	summary?: { _errors?: string[] }
+	context?: { _errors?: string[] }
+	outcome?: { _errors?: string[] }
+	tools?: { _errors?: string[] }
 	status?: { _errors?: string[] }
 }
 
@@ -56,6 +62,9 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 				projectType: data.project.project_type,
 				role: data.project.role,
 				summary: data.project.summary,
+				context: data.project.context,
+				outcome: data.project.outcome,
+				tools: data.project.tools,
 				status: data.project.status,
 			})
 			setSubmitError(null)
@@ -86,7 +95,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 
 	return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <div className="rounded-4xl border border-border/70 bg-card/92 px-6 py-5 shadow-md backdrop-blur sm:px-7 dark:border-white/8 dark:shadow-white/2">
+      <div className="rounded-4xl border border-border/70 bg-card/92 px-5 py-4 shadow-md backdrop-blur sm:px-6 dark:border-white/8 dark:shadow-white/2">
         <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
           <div className="flex items-center gap-3">
             <div
@@ -127,7 +136,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
         </div>
       </div>
 
-      <div className="grid gap-10 xl:grid-cols-5 xl:items-start">
+      <div className="grid gap-8 xl:grid-cols-5 xl:items-start">
         <div className="px-1 sm:px-2 xl:col-span-3">
           <div className="space-y-3">
             <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
@@ -137,8 +146,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
               Edit the core fields
             </h2>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Keep this pass focused on the fundamentals that make the project
-              legible.
+              Tighten the fundamentals first, then deepen the proof-of-work story.
             </p>
           </div>
 
@@ -193,9 +201,9 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
                 </Field>
               </div>
 
-              <Field>
-                <FieldLabel htmlFor="project-summary">
-                  Project summary
+							<Field>
+								<FieldLabel htmlFor="project-summary">
+									Project summary
                 </FieldLabel>
                 <Textarea
                   id="project-summary"
@@ -209,10 +217,81 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
                 <FieldDescription>
                   Problem, ownership, delivery, and why the project matters.
                 </FieldDescription>
-                <FieldError
-                  errors={[{ message: validationErrors.summary?._errors?.[0] }]}
-                />
-              </Field>
+								<FieldError
+									errors={[{ message: validationErrors.summary?._errors?.[0] }]}
+								/>
+							</Field>
+
+              <div className="border-t border-border/60 pt-2">
+                <div className="space-y-2 pb-2">
+                  <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
+                    Project Story
+                  </p>
+                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                    Add the context and result that make this project read like
+                    evidence rather than a simple portfolio entry.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+								<Field>
+									<FieldLabel htmlFor="project-context">Project context</FieldLabel>
+									<Textarea
+										id="project-context"
+										value={formState.context}
+										disabled={isPending}
+										onChange={(event) =>
+											handleChange("context", event.target.value)
+										}
+										className="min-h-32"
+									/>
+									<FieldDescription>
+										What situation, problem, or environment led to this work?
+									</FieldDescription>
+									<FieldError
+										errors={[{ message: validationErrors.context?._errors?.[0] }]}
+									/>
+								</Field>
+
+								<Field>
+									<FieldLabel htmlFor="project-outcome">Outcome / impact</FieldLabel>
+									<Textarea
+										id="project-outcome"
+										value={formState.outcome}
+										disabled={isPending}
+										onChange={(event) =>
+											handleChange("outcome", event.target.value)
+										}
+										className="min-h-32"
+									/>
+									<FieldDescription>
+										What changed, improved, or was delivered because of the project?
+									</FieldDescription>
+									<FieldError
+										errors={[{ message: validationErrors.outcome?._errors?.[0] }]}
+									/>
+								</Field>
+              </div>
+
+							<Field>
+								<FieldLabel htmlFor="project-tools">Tools / stack</FieldLabel>
+								<Input
+									id="project-tools"
+									value={formState.tools}
+									disabled={isPending}
+									onChange={(event) =>
+										handleChange("tools", event.target.value)
+									}
+									placeholder="Terraform, Docker, PostgreSQL"
+								/>
+								<FieldDescription>
+									Use a simple comma-separated list for now.
+								</FieldDescription>
+								<FieldError
+									errors={[{ message: validationErrors.tools?._errors?.[0] }]}
+								/>
+							</Field>
 
               <FieldError
                 errors={[{ message: validationErrors.status?._errors?.[0] }]}
@@ -234,7 +313,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
           </div>
         </div>
 
-        <aside className="rounded-4xl border border-border/70 bg-card/88 p-6 shadow-md space-y-6 sm:p-7 xl:sticky xl:top-24 xl:col-span-2 dark:border-white/8 dark:shadow-white/2">
+        <aside className="rounded-4xl border border-border/70 bg-card/88 p-6 shadow-md space-y-6 sm:p-7 xl:sticky xl:top-28 xl:col-span-2 dark:border-white/8 dark:shadow-white/2">
           <div>
             <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
               Live Preview
