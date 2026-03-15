@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-	title: 'Dashboard | Certfolio',
+	title: 'Dashboard - Certfolio',
 	description: 'Your personal dashboard on Certfolio. Manage your certificates, view your profile information, and access your account settings all in one place.',
 	authors: [{
 		name: 'Marius Bobitiu',

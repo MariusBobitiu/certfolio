@@ -3,7 +3,7 @@ import { Separator } from "@/components/ui/separator"
 import { SettingsSidebar } from "../../../components/settings/sidebar"
 
 export const metadata: Metadata = {
-  title: "Settings | Certfolio",
+  title: "Settings - Certfolio",
   description: "Manage your account settings and preferences on Certfolio.",
 }
 
