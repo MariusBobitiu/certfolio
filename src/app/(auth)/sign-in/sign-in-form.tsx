@@ -86,7 +86,7 @@ export function SignInForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
       <FieldGroup>
         <Field data-invalid={Boolean(errors.email)}>
           <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -147,7 +147,7 @@ export function SignInForm() {
           <FieldError errors={[errors.password]} />
         </Field>
 
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full items-center justify-between gap-3">
           <Field
             data-invalid={Boolean(errors.rememberMe)}
             orientation="horizontal"

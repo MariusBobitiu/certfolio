@@ -20,12 +20,12 @@ export default async function SignInPage() {
 	// Otherwise, render the sign-in page
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-5 sm:space-y-6">
 			<div className="space-y-2 text-center">
-				<div className="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+				<div className="mx-auto flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-10">
 					<ShieldCheck className="size-5" />
 				</div>
-				<h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+				<h1 className="text-[1.85rem] font-semibold tracking-tight sm:text-2xl">Welcome back</h1>
 				<p className="text-sm text-muted-foreground">
 					Sign in to manage your certifications and showcase your progress.
 				</p>
