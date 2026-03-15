@@ -70,26 +70,6 @@ export function ProjectsWorkspace() {
 
 	return (
 		<>
-			<section className='mb-6 flex flex-col gap-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between'>
-				<div className='max-w-2xl space-y-3'>
-					<p className='text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground'>
-						Projects
-					</p>
-					<h1 className='text-4xl font-semibold tracking-[-0.04em] sm:text-5xl'>
-						Build a body of proof-backed work.
-					</h1>
-					<p className='text-base leading-7 text-muted-foreground sm:text-lg'>
-						Projects in Certfolio should read like credible professional evidence,
-						not just portfolio tiles. Start with one strong entry and expand from there.
-					</p>
-				</div>
-
-				<Button size='lg' className='w-full rounded-full sm:w-auto' onClick={() => setIsDialogOpen(true)}>
-					<Plus className='size-4' />
-					Add new project
-				</Button>
-			</section>
-
 			<section className='mt-8 grid gap-6 lg:grid-cols-[1.5fr_0.9fr]'>
 				<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
 					<div className='space-y-3 border-b border-border/60 pb-5'>
@@ -213,13 +193,6 @@ export function ProjectsWorkspace() {
 					</div>
 				</aside>
 			</section>
-
-			<div className='mt-6 flex justify-end'>
-				<Button size='lg' className='rounded-full' onClick={() => setIsDialogOpen(true)}>
-					<Plus className='size-4' />
-					Add new project
-				</Button>
-			</div>
 
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogContent className='max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-0 sm:max-w-2xl'>
