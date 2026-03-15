@@ -6,6 +6,7 @@ import { useAction } from 'next-safe-action/hooks'
 import { Plus } from 'lucide-react'
 
 import { ProjectCardPreview } from '@/components/projects/project-card-preview'
+import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
 import { Button } from '@/components/ui/button'
 import {
 	Dialog,
@@ -42,6 +43,8 @@ type ProjectDraft = {
 	status: 'draft' | 'published' | 'archived'
 }
 
+type ProjectFilter = 'all' | ProjectDraft['status']
+
 const emptyDraft: ProjectDraft = {
 	id: '',
 	slug: '',
@@ -67,6 +70,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 	const [draft, setDraft] = useState<ProjectDraft>(emptyDraft)
 	const [projects, setProjects] = useState<ProjectDraft[]>(initialProjects)
+	const [activeFilter, setActiveFilter] = useState<ProjectFilter>('all')
 	const [submitError, setSubmitError] = useState<string | null>(null)
 
 	const { execute, isPending, result } = useAction(createProjectAction, {
@@ -124,6 +128,36 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 	const publishedCount = projects.filter((project) => project.status === 'published').length
 	const draftCount = projects.filter((project) => project.status === 'draft').length
 	const archivedCount = projects.filter((project) => project.status === 'archived').length
+	const filteredProjects =
+		activeFilter === 'all'
+			? projects
+			: projects.filter((project) => project.status === activeFilter)
+	const activeFilterLabel =
+		activeFilter === 'all'
+			? 'All projects'
+			: activeFilter === 'draft'
+				? 'Draft projects'
+				: activeFilter === 'published'
+					? 'Published projects'
+					: 'Archived projects'
+	const activeFilterDescription =
+		activeFilter === 'all'
+			? 'Drafts, published work, and archived entries all live here until you decide how each project should evolve.'
+			: activeFilter === 'draft'
+				? 'Projects still being shaped before they are ready to be reused or shared more widely.'
+				: activeFilter === 'published'
+					? 'Projects that are ready to represent your work more confidently and cleanly.'
+					: 'Projects you want to keep on record without leaving them in the active workflow.'
+	const statusFilters: Array<{
+		value: ProjectFilter
+		label: string
+		count: number
+	}> = [
+		{ value: 'all', label: 'All', count: projects.length },
+		{ value: 'draft', label: 'Drafts', count: draftCount },
+		{ value: 'published', label: 'Published', count: publishedCount },
+		{ value: 'archived', label: 'Archived', count: archivedCount },
+	]
 	const hasProjects = projects.length > 0
 
 	return (
@@ -151,53 +185,107 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 					</div>
 
 					<div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
+						<button
+							type='button'
+							onClick={() => setActiveFilter('all')}
+							className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+								activeFilter === 'all'
+									? 'border-foreground/15 bg-card'
+									: 'border-border/70 bg-card/92 hover:border-border/90'
+							}`}
+						>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Total
 							</p>
 							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{projects.length}</p>
-						</div>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
+						</button>
+						<button
+							type='button'
+							onClick={() => setActiveFilter('published')}
+							className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+								activeFilter === 'published'
+									? 'border-emerald-500/30 bg-emerald-500/5'
+									: 'border-border/70 bg-card/92 hover:border-border/90'
+							}`}
+						>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Published
 							</p>
 							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{publishedCount}</p>
-						</div>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
+						</button>
+						<button
+							type='button'
+							onClick={() => setActiveFilter('draft')}
+							className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+								activeFilter === 'draft'
+									? 'border-amber-500/30 bg-amber-500/5'
+									: 'border-border/70 bg-card/92 hover:border-border/90'
+							}`}
+						>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Drafts
 							</p>
 							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{draftCount}</p>
-						</div>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
+						</button>
+						<button
+							type='button'
+							onClick={() => setActiveFilter('archived')}
+							className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+								activeFilter === 'archived'
+									? 'border-foreground/15 bg-muted/40'
+									: 'border-border/70 bg-card/92 hover:border-border/90'
+							}`}
+						>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Archived
 							</p>
 							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{archivedCount}</p>
-						</div>
+						</button>
 					</div>
 
 					<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2'>
-						<div className='flex flex-col gap-3 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between'>
+						<div className='flex flex-col gap-5 border-b border-border/60 pb-5'>
 							<div className='space-y-2'>
 								<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
 									Collection Surface
 								</p>
 								<h3 className='text-xl font-semibold tracking-[-0.03em] sm:text-2xl'>
-									All projects
+									{activeFilterLabel}
 								</h3>
 								<p className='max-w-2xl text-sm leading-6 text-muted-foreground'>
-									Drafts, published work, and archived entries all live here until
-									you decide how each project should evolve.
+									{activeFilterDescription}
 								</p>
+							</div>
+
+							<div className='flex flex-wrap gap-2'>
+								{statusFilters.map((filter) => (
+									<Button
+										key={filter.value}
+										type='button'
+										variant={activeFilter === filter.value ? 'default' : 'outline'}
+										size='sm'
+										onClick={() => setActiveFilter(filter.value)}
+										className='rounded-full'
+									>
+										{filter.label}
+										<span className='text-xs opacity-80'>{filter.count}</span>
+									</Button>
+								))}
 							</div>
 						</div>
 
 						<div className='mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3'>
-								{projects.map((project, index) => (
+							{filteredProjects.length > 0 ? (
+								filteredProjects.map((project, index) => (
 									<ProjectCardPreview
 										key={project.id}
-										eyebrow={index === 0 ? 'Most recent' : 'Project'}
+										eyebrow={
+											activeFilter === 'all' && index === 0
+												? 'Most recent'
+												: activeFilter === 'all'
+													? 'Project'
+													: activeFilterLabel.replace(' projects', '')
+										}
 										title={project.title}
 										summary={project.summary}
 										projectType={project.projectType}
@@ -205,7 +293,43 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 										status={project.status}
 										href={getProjectHref(project.slug)}
 									/>
-								))}
+								))
+							) : (
+								<div className='md:col-span-2 2xl:col-span-3'>
+									<div className='rounded-3xl border border-dashed border-border/70 bg-muted/35 px-5 py-6 dark:border-white/8 dark:bg-white/[0.03]'>
+										<div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+											<div className='space-y-2'>
+												<div className='flex items-center gap-3'>
+													{activeFilter !== 'all' ? (
+														<ProjectStatusBadge status={activeFilter} />
+													) : null}
+													<p className='text-sm font-medium text-foreground'>
+														No {activeFilter === 'all' ? '' : `${activeFilter} `}projects yet
+													</p>
+												</div>
+												<p className='max-w-2xl text-sm leading-6 text-muted-foreground'>
+													{activeFilter === 'draft'
+														? 'Start a new project or move an existing one back into draft while you refine it.'
+														: activeFilter === 'published'
+															? 'Publish stronger project entries here once they are ready to represent your work.'
+															: activeFilter === 'archived'
+																? 'Archived projects will appear here once you move them out of the active workspace.'
+																: 'Create the first project entry to start shaping your proof-backed body of work.'}
+												</p>
+											</div>
+
+											<Button
+												type='button'
+												className='rounded-full sm:self-start'
+												onClick={() => setIsDialogOpen(true)}
+											>
+												<Plus className='size-4' />
+												Add new project
+											</Button>
+										</div>
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
 				</section>
