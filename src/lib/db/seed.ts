@@ -2,7 +2,7 @@ import { hash } from "@node-rs/argon2"
 import { eq } from "drizzle-orm"
 import { config } from "dotenv"
 import { pathToFileURL } from "node:url"
-import { client, db, UsersTable } from "./drizzle"
+import { client, db, ProjectsTable, UsersTable } from "./drizzle"
 
 config({ path: process.env.DOTENV_CONFIG_PATH ?? ".env.local", quiet: true })
 
@@ -18,6 +18,36 @@ type SeedOptions = {
   closeConnection?: boolean
 }
 
+const demoProjects = [
+  {
+    slug: "certification-ops-dashboard",
+    title: "Certification Ops Dashboard",
+    summary:
+      "Designed and implemented an internal dashboard that reduced time spent tracking certification renewals and surfaced overdue renewals earlier for the team.",
+    project_type: "Software",
+    role: "Product engineer",
+    status: "published" as const,
+  },
+  {
+    slug: "homelab-zero-touch-deployments",
+    title: "Homelab Zero-Touch Deployments",
+    summary:
+      "Built an infrastructure automation workflow for repeatable homelab provisioning, covering base configuration, service rollout, and ongoing maintenance tasks.",
+    project_type: "Infrastructure",
+    role: "Systems engineer",
+    status: "published" as const,
+  },
+  {
+    slug: "soc-lab-incident-playbooks",
+    title: "SOC Lab Incident Playbooks",
+    summary:
+      "Created a security lab project focused on documenting response playbooks for common alert patterns, with an emphasis on clarity, triage speed, and repeatability.",
+    project_type: "Security",
+    role: "Security analyst",
+    status: "draft" as const,
+  },
+] as const
+
 export async function seedDatabase(options: SeedOptions = {}) {
   const { closeConnection = false } = options
 
@@ -28,23 +58,52 @@ export async function seedDatabase(options: SeedOptions = {}) {
       .where(eq(UsersTable.email, ADMIN_EMAIL))
       .limit(1)
 
-    if (existingAdmin) {
+    let adminId = existingAdmin?.id
+
+    if (!adminId) {
+      const passwordHash = await hash(ADMIN_PASSWORD)
+
+      const [adminUser] = await db
+        .insert(UsersTable)
+        .values({
+          name: ADMIN_NAME,
+          email: ADMIN_EMAIL,
+          image: ADMIN_IMAGE,
+          slug: ADMIN_SLUG,
+          password_hash: passwordHash,
+          email_verified_at: new Date(),
+        })
+        .returning({ id: UsersTable.id })
+
+      adminId = adminUser.id
+      console.log(`✓ Admin user created: ${ADMIN_EMAIL}`)
+    } else {
       console.log("✓ Admin user already exists")
-      return
     }
 
-    const passwordHash = await hash(ADMIN_PASSWORD)
+    for (const project of demoProjects) {
+      const [existingProject] = await db
+        .select({ id: ProjectsTable.id })
+        .from(ProjectsTable)
+        .where(eq(ProjectsTable.slug, project.slug))
+        .limit(1)
 
-    await db.insert(UsersTable).values({
-      name: ADMIN_NAME,
-      email: ADMIN_EMAIL,
-      image: ADMIN_IMAGE,
-      slug: ADMIN_SLUG,
-      password_hash: passwordHash,
-      email_verified_at: new Date(),
-    })
+      if (existingProject) {
+        continue
+      }
 
-    console.log(`✓ Admin user created: ${ADMIN_EMAIL}`)
+      await db.insert(ProjectsTable).values({
+        user_id: adminId,
+        slug: project.slug,
+        title: project.title,
+        summary: project.summary,
+        project_type: project.project_type,
+        role: project.role,
+        status: project.status,
+      })
+    }
+
+    console.log("✓ Demo admin projects seeded")
     console.log("✓ Database seeded successfully")
   } catch (error) {
     console.error("Error seeding database:", error)

@@ -1,4 +1,9 @@
 import { Metadata } from 'next'
+import { desc, eq } from 'drizzle-orm'
+
+import { getCurrentSession } from '@/lib/auth/session'
+import { db, ProjectsTable } from '@/lib/db/drizzle'
+
 import { ProjectsWorkspace } from './projects-workspace'
 
 export const metadata: Metadata = {
@@ -16,7 +21,16 @@ const foundationSignals = [
 	'Structured for outcomes, context, and evidence',
 ] as const
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+	const session = await getCurrentSession()
+	const projects = session
+		? await db
+				.select()
+				.from(ProjectsTable)
+				.where(eq(ProjectsTable.user_id, session.user.id))
+				.orderBy(desc(ProjectsTable.created_at))
+		: []
+
 	return (
 		<div className='relative overflow-hidden'>
 			<div className='absolute inset-x-0 top-0 -z-10 h-112 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_30%),linear-gradient(180deg,rgba(148,163,184,0.08),transparent_78%)]' />
@@ -51,7 +65,17 @@ export default function ProjectsPage() {
 				</div>
 			</section>
 
-			<ProjectsWorkspace />
+			<ProjectsWorkspace
+				initialProjects={projects.map((project) => ({
+					id: project.id,
+					slug: project.slug,
+					title: project.title,
+					projectType: project.project_type,
+					role: project.role,
+					summary: project.summary,
+					status: project.status,
+				}))}
+			/>
 		</div>
 	)
 }

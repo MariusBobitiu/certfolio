@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useAction } from 'next-safe-action/hooks'
 import { Plus, Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -14,12 +15,14 @@ import {
 } from '@/components/ui/dialog'
 import {
 	Field,
+	FieldError,
 	FieldDescription,
 	FieldGroup,
 	FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { createProjectAction } from './action'
 
 const editorialPrompts = [
 	'What problem did this project solve?',
@@ -29,26 +32,92 @@ const editorialPrompts = [
 
 type ProjectDraft = {
 	id: string
+	slug: string
 	title: string
 	projectType: string
 	role: string
 	summary: string
+	status: 'draft' | 'published' | 'archived'
 }
 
 const emptyDraft: ProjectDraft = {
 	id: '',
+	slug: '',
 	title: '',
 	projectType: '',
 	role: '',
 	summary: '',
+	status: 'draft',
 }
 
-export function ProjectsWorkspace() {
+type ProjectsWorkspaceProps = {
+	initialProjects: ProjectDraft[]
+}
+
+type ActionValidationErrors = {
+	title?: { _errors?: string[] }
+	projectType?: { _errors?: string[] }
+	role?: { _errors?: string[] }
+	summary?: { _errors?: string[] }
+}
+
+export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 	const [draft, setDraft] = useState<ProjectDraft>(emptyDraft)
-	const [projects, setProjects] = useState<ProjectDraft[]>([])
+	const [projects, setProjects] = useState<ProjectDraft[]>(initialProjects)
+	const [submitError, setSubmitError] = useState<string | null>(null)
+	const [validationErrors, setValidationErrors] = useState<ActionValidationErrors>({})
+
+	const { execute, isPending, result } = useAction(createProjectAction, {
+		onSuccess: ({ data }) => {
+			if (data?.failure || !data?.project) {
+				setSubmitError(data?.failure ?? "We could not create the project right now.")
+				return
+			}
+
+			setProjects((current) => [
+				{
+					id: data.project.id,
+					slug: data.project.slug,
+					title: data.project.title,
+					projectType: data.project.project_type,
+					role: data.project.role,
+					summary: data.project.summary,
+					status: data.project.status,
+				},
+				...current,
+			])
+			setDraft(emptyDraft)
+			setSubmitError(null)
+			setValidationErrors({})
+			setIsDialogOpen(false)
+		},
+		onError: ({ error }) => {
+			setSubmitError(error.serverError ?? "We could not create the project right now.")
+		},
+	})
+
+	useEffect(() => {
+		const errors = result.validationErrors as ActionValidationErrors | undefined
+		if (!errors) {
+			return
+		}
+
+		setValidationErrors(errors)
+	}, [result.validationErrors])
 
 	const handleChange = (field: keyof ProjectDraft, value: string) => {
+		if (submitError) {
+			setSubmitError(null)
+		}
+
+		if (validationErrors[field as keyof ActionValidationErrors]) {
+			setValidationErrors((current) => ({
+				...current,
+				[field]: undefined,
+			}))
+		}
+
 		setDraft((current) => ({
 			...current,
 			[field]: value,
@@ -57,15 +126,14 @@ export function ProjectsWorkspace() {
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
-		setProjects((current) => [
-			{
-				...draft,
-				id: crypto.randomUUID(),
-			},
-			...current,
-		])
-		setDraft(emptyDraft)
-		setIsDialogOpen(false)
+		setSubmitError(null)
+		setValidationErrors({})
+		execute({
+			title: draft.title,
+			projectType: draft.projectType,
+			role: draft.role,
+			summary: draft.summary,
+		})
 	}
 
 	return (
@@ -117,6 +185,9 @@ export function ProjectsWorkspace() {
 											</div>
 											<div className='rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm dark:border-white/8 dark:bg-white/4'>
 												Role: {project.role}
+											</div>
+											<div className='rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm capitalize dark:border-white/8 dark:bg-white/4'>
+												Status: {project.status}
 											</div>
 										</div>
 									</article>
@@ -214,10 +285,12 @@ export function ProjectsWorkspace() {
 									<Input
 										id='project-title'
 										value={draft.title}
+										disabled={isPending}
 										onChange={(event) => handleChange('title', event.target.value)}
 										placeholder='Internal tooling rollout for support operations'
 										required
 									/>
+									<FieldError errors={[{ message: validationErrors.title?._errors?.[0] }]} />
 								</Field>
 
 								<div className='grid gap-4 sm:grid-cols-2'>
@@ -226,10 +299,12 @@ export function ProjectsWorkspace() {
 										<Input
 											id='project-type'
 											value={draft.projectType}
+											disabled={isPending}
 											onChange={(event) => handleChange('projectType', event.target.value)}
 											placeholder='Automation, infrastructure, software, security'
 											required
 										/>
+										<FieldError errors={[{ message: validationErrors.projectType?._errors?.[0] }]} />
 									</Field>
 
 									<Field>
@@ -237,10 +312,12 @@ export function ProjectsWorkspace() {
 										<Input
 											id='project-role'
 											value={draft.role}
+											disabled={isPending}
 											onChange={(event) => handleChange('role', event.target.value)}
 											placeholder='Engineer, student, consultant, team lead'
 											required
 										/>
+										<FieldError errors={[{ message: validationErrors.role?._errors?.[0] }]} />
 									</Field>
 								</div>
 
@@ -249,24 +326,28 @@ export function ProjectsWorkspace() {
 									<Textarea
 										id='project-summary'
 										value={draft.summary}
+										disabled={isPending}
 										onChange={(event) => handleChange('summary', event.target.value)}
 										placeholder='Describe the problem, what you delivered, and why the project matters.'
 										className='min-h-32'
 										required
 									/>
+									<FieldError errors={[{ message: validationErrors.summary?._errors?.[0] }]} />
 									<FieldDescription>
 										Focus on context and outcome first. Evidence, links, and richer structure
 										will come in later phases.
 									</FieldDescription>
 								</Field>
+
+								<FieldError errors={submitError ? [{ message: submitError }] : []} />
 							</FieldGroup>
 						</div>
 
 						<DialogFooter className='border-t border-border/60 px-6 py-5 sm:px-7'>
-							<Button type='button' variant='ghost' onClick={() => setIsDialogOpen(false)}>
+							<Button type='button' variant='ghost' onClick={() => setIsDialogOpen(false)} disabled={isPending}>
 								Cancel
 							</Button>
-							<Button type='submit'>
+							<Button type='submit' disabled={isPending}>
 								Create draft project
 							</Button>
 						</DialogFooter>

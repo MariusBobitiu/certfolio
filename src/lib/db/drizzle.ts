@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import * as authSchema from "@/lib/db/auth/schema"
 import * as preferencesSchema from "@/lib/db/preferences/schema"
+import * as projectsSchema from "@/lib/db/projects/schema"
 
 const connectionString = process.env.DATABASE_URL
 
@@ -13,7 +14,7 @@ const databaseUrl: string = connectionString
 
 const isLocalConnection = /localhost|127\.0\.0\.1/.test(databaseUrl)
 
-const schema = { ...authSchema, ...preferencesSchema }
+const schema = { ...authSchema, ...preferencesSchema, ...projectsSchema }
 
 declare global {
   // eslint-disable-next-line no-var
@@ -47,6 +48,7 @@ export {
 } from "@/lib/db/auth/schema"
 
 export { UserPreferencesTable } from "@/lib/db/preferences/schema"
+export { ProjectsTable, projectStatusEnum } from "@/lib/db/projects/schema"
 
 export type {
   Verification,
@@ -69,3 +71,5 @@ export type {
   UserPreferences,
   NewUserPreferences,
 } from "@/lib/db/preferences/schema"
+
+export type { Project, NewProject } from "@/lib/db/projects/schema"
