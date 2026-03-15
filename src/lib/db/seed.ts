@@ -2,7 +2,13 @@ import { hash } from "@node-rs/argon2"
 import { eq } from "drizzle-orm"
 import { config } from "dotenv"
 import { pathToFileURL } from "node:url"
-import { client, db, ProjectsTable, UsersTable } from "./drizzle"
+import {
+  client,
+  db,
+  ProjectEvidenceLinksTable,
+  ProjectsTable,
+  UsersTable,
+} from "./drizzle"
 
 config({ path: process.env.DOTENV_CONFIG_PATH ?? ".env.local", quiet: true })
 
@@ -32,6 +38,18 @@ const demoProjects = [
     project_type: "Software",
     role: "Product engineer",
     status: "published" as const,
+    evidenceLinks: [
+      {
+        label: "Source repository",
+        url: "https://github.com/demo/certification-ops-dashboard",
+        kind: "repository" as const,
+      },
+      {
+        label: "Internal rollout notes",
+        url: "https://docs.example.com/certification-ops-dashboard",
+        kind: "documentation" as const,
+      },
+    ],
   },
   {
     slug: "homelab-zero-touch-deployments",
@@ -46,6 +64,18 @@ const demoProjects = [
     project_type: "Infrastructure",
     role: "Systems engineer",
     status: "published" as const,
+    evidenceLinks: [
+      {
+        label: "Automation repository",
+        url: "https://github.com/demo/homelab-zero-touch",
+        kind: "repository" as const,
+      },
+      {
+        label: "Provisioning write-up",
+        url: "https://blog.example.com/homelab-zero-touch",
+        kind: "write_up" as const,
+      },
+    ],
   },
   {
     slug: "soc-lab-incident-playbooks",
@@ -60,6 +90,18 @@ const demoProjects = [
     project_type: "Security",
     role: "Security analyst",
     status: "draft" as const,
+    evidenceLinks: [
+      {
+        label: "Playbook repository",
+        url: "https://github.com/demo/soc-lab-playbooks",
+        kind: "repository" as const,
+      },
+      {
+        label: "Lab walkthrough",
+        url: "https://blog.example.com/soc-lab-playbooks",
+        kind: "case_study" as const,
+      },
+    ],
   },
 ] as const
 
@@ -117,10 +159,26 @@ export async function seedDatabase(options: SeedOptions = {}) {
             status: project.status,
           })
           .where(eq(ProjectsTable.id, existingProject.id))
+
+        await db
+          .delete(ProjectEvidenceLinksTable)
+          .where(eq(ProjectEvidenceLinksTable.project_id, existingProject.id))
+
+        if (project.evidenceLinks.length > 0) {
+          await db.insert(ProjectEvidenceLinksTable).values(
+            project.evidenceLinks.map((evidenceLink, index) => ({
+              project_id: existingProject.id,
+              label: evidenceLink.label,
+              url: evidenceLink.url,
+              kind: evidenceLink.kind,
+              sort_order: index,
+            }))
+          )
+        }
         continue
       }
 
-      await db.insert(ProjectsTable).values({
+      const [insertedProject] = await db.insert(ProjectsTable).values({
         user_id: adminId,
         slug: project.slug,
         title: project.title,
@@ -131,7 +189,19 @@ export async function seedDatabase(options: SeedOptions = {}) {
         project_type: project.project_type,
         role: project.role,
         status: project.status,
-      })
+      }).returning({ id: ProjectsTable.id })
+
+      if (project.evidenceLinks.length > 0) {
+        await db.insert(ProjectEvidenceLinksTable).values(
+          project.evidenceLinks.map((evidenceLink, index) => ({
+            project_id: insertedProject.id,
+            label: evidenceLink.label,
+            url: evidenceLink.url,
+            kind: evidenceLink.kind,
+            sort_order: index,
+          }))
+        )
+      }
     }
 
     console.log("✓ Demo admin projects seeded")

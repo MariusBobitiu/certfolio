@@ -1,6 +1,7 @@
 import { InferInsertModel, InferSelectModel } from "drizzle-orm"
 import {
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -15,6 +16,15 @@ export const projectStatusEnum = pgEnum("project_status", [
   "draft",
   "published",
   "archived",
+])
+
+export const projectEvidenceKindEnum = pgEnum("project_evidence_kind", [
+  "repository",
+  "demo",
+  "documentation",
+  "write_up",
+  "case_study",
+  "other",
 ])
 
 export const projectsTable = pgTable(
@@ -56,5 +66,36 @@ export const projectsTable = pgTable(
 
 export const ProjectsTable = projectsTable
 
+export const projectEvidenceLinksTable = pgTable(
+  "project_evidence_links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    project_id: uuid("project_id")
+      .notNull()
+      .references(() => projectsTable.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    url: text("url").notNull(),
+    kind: projectEvidenceKindEnum("kind").default("other").notNull(),
+    sort_order: integer("sort_order").default(0).notNull(),
+    created_at: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (evidenceLinks) => [
+    index("project_evidence_links_project_id_idx").on(evidenceLinks.project_id),
+    index("project_evidence_links_sort_order_idx").on(
+      evidenceLinks.project_id,
+      evidenceLinks.sort_order
+    ),
+  ]
+)
+
+export const ProjectEvidenceLinksTable = projectEvidenceLinksTable
+
 export type Project = InferSelectModel<typeof projectsTable>
 export type NewProject = InferInsertModel<typeof projectsTable>
+export type ProjectEvidenceLink = InferSelectModel<typeof projectEvidenceLinksTable>
+export type NewProjectEvidenceLink = InferInsertModel<typeof projectEvidenceLinksTable>

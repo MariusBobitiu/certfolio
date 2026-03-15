@@ -1,9 +1,9 @@
 "use server"
 
-import { and, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 
 import { getCurrentSession } from "@/lib/auth/session"
-import { db, ProjectsTable } from "@/lib/db/drizzle"
+import { db, ProjectEvidenceLinksTable, ProjectsTable } from "@/lib/db/drizzle"
 import { actionClient } from "@/lib/safe-action"
 
 import { createProjectSchema, updateProjectSchema } from "./schema"
@@ -58,26 +58,53 @@ export const createProjectAction = actionClient
     const context = parsedInput.context.trim()
     const outcome = parsedInput.outcome.trim()
     const tools = parsedInput.tools.trim()
+    const evidenceLinks = parsedInput.evidenceLinks.map((evidenceLink) => ({
+      label: evidenceLink.label.trim(),
+      url: evidenceLink.url.trim(),
+      kind: evidenceLink.kind,
+    }))
     const slug = await generateUniqueProjectSlug(session.user.id, title)
 
-    const [project] = await db
-      .insert(ProjectsTable)
-      .values({
-        user_id: session.user.id,
-        slug,
-        title,
-        project_type: projectType,
-        role,
-        summary,
-        context,
-        outcome,
-        tools,
-        status: "draft",
-        updated_at: new Date(),
-      })
-      .returning()
+    const { project, persistedEvidenceLinks } = await db.transaction(async (tx) => {
+      const [project] = await tx
+        .insert(ProjectsTable)
+        .values({
+          user_id: session.user.id,
+          slug,
+          title,
+          project_type: projectType,
+          role,
+          summary,
+          context,
+          outcome,
+          tools,
+          status: "draft",
+          updated_at: new Date(),
+        })
+        .returning()
 
-    return { success: "Project created", project }
+      if (evidenceLinks.length > 0) {
+        await tx.insert(ProjectEvidenceLinksTable).values(
+          evidenceLinks.map((evidenceLink, index) => ({
+            project_id: project.id,
+            label: evidenceLink.label,
+            url: evidenceLink.url,
+            kind: evidenceLink.kind,
+            sort_order: index,
+          }))
+        )
+      }
+
+      const persistedEvidenceLinks = await tx
+        .select()
+        .from(ProjectEvidenceLinksTable)
+        .where(eq(ProjectEvidenceLinksTable.project_id, project.id))
+        .orderBy(asc(ProjectEvidenceLinksTable.sort_order))
+
+      return { project, persistedEvidenceLinks }
+    })
+
+    return { success: "Project created", project, evidenceLinks: persistedEvidenceLinks }
   })
 
 export const updateProjectAction = actionClient
@@ -103,21 +130,53 @@ export const updateProjectAction = actionClient
       return { failure: "Project not found" }
     }
 
-    const [project] = await db
-      .update(ProjectsTable)
-      .set({
-        title: parsedInput.title.trim(),
-        project_type: parsedInput.projectType.trim(),
-        role: parsedInput.role.trim(),
-        summary: parsedInput.summary.trim(),
-        context: parsedInput.context.trim(),
-        outcome: parsedInput.outcome.trim(),
-        tools: parsedInput.tools.trim(),
-        status: parsedInput.status,
-        updated_at: new Date(),
-      })
-      .where(eq(ProjectsTable.id, existingProject.id))
-      .returning()
+    const evidenceLinks = parsedInput.evidenceLinks.map((evidenceLink) => ({
+      label: evidenceLink.label.trim(),
+      url: evidenceLink.url.trim(),
+      kind: evidenceLink.kind,
+    }))
 
-    return { success: "Project updated", project }
+    const { project, persistedEvidenceLinks } = await db.transaction(async (tx) => {
+      const [project] = await tx
+        .update(ProjectsTable)
+        .set({
+          title: parsedInput.title.trim(),
+          project_type: parsedInput.projectType.trim(),
+          role: parsedInput.role.trim(),
+          summary: parsedInput.summary.trim(),
+          context: parsedInput.context.trim(),
+          outcome: parsedInput.outcome.trim(),
+          tools: parsedInput.tools.trim(),
+          status: parsedInput.status,
+          updated_at: new Date(),
+        })
+        .where(eq(ProjectsTable.id, existingProject.id))
+        .returning()
+
+      await tx
+        .delete(ProjectEvidenceLinksTable)
+        .where(eq(ProjectEvidenceLinksTable.project_id, existingProject.id))
+
+      if (evidenceLinks.length > 0) {
+        await tx.insert(ProjectEvidenceLinksTable).values(
+          evidenceLinks.map((evidenceLink, index) => ({
+            project_id: existingProject.id,
+            label: evidenceLink.label,
+            url: evidenceLink.url,
+            kind: evidenceLink.kind,
+            sort_order: index,
+          }))
+        )
+      }
+
+      const persistedEvidenceLinks = await tx
+        .select()
+        .from(ProjectEvidenceLinksTable)
+        .where(eq(ProjectEvidenceLinksTable.project_id, existingProject.id))
+        .orderBy(asc(ProjectEvidenceLinksTable.sort_order))
+
+      return { project, persistedEvidenceLinks }
+    })
+
+    return { success: "Project updated", project, evidenceLinks: persistedEvidenceLinks }
   })

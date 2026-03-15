@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { getCurrentSession } from '@/lib/auth/session'
-import { db, ProjectsTable } from '@/lib/db/drizzle'
+import { db, ProjectEvidenceLinksTable, ProjectsTable } from '@/lib/db/drizzle'
 
 import { ProjectDetailForm } from './project-detail-form'
 
@@ -33,6 +33,12 @@ export default async function ProjectDetailPage({
 	if (!project) {
 		notFound()
 	}
+
+	const evidenceLinks = await db
+		.select()
+		.from(ProjectEvidenceLinksTable)
+		.where(eq(ProjectEvidenceLinksTable.project_id, project.id))
+		.orderBy(asc(ProjectEvidenceLinksTable.sort_order))
 
 	return (
 		<div className='relative space-y-8 overflow-hidden'>
@@ -75,6 +81,12 @@ export default async function ProjectDetailPage({
 					outcome: project.outcome,
 					tools: project.tools,
 					status: project.status,
+					evidenceLinks: evidenceLinks.map((evidenceLink) => ({
+						id: evidenceLink.id,
+						label: evidenceLink.label,
+						url: evidenceLink.url,
+						kind: evidenceLink.kind,
+					})),
 				}}
 			/>
 		</div>

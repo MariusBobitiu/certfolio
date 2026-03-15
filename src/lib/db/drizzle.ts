@@ -48,7 +48,12 @@ export {
 } from "@/lib/db/auth/schema"
 
 export { UserPreferencesTable } from "@/lib/db/preferences/schema"
-export { ProjectsTable, projectStatusEnum } from "@/lib/db/projects/schema"
+export {
+  ProjectsTable,
+  ProjectEvidenceLinksTable,
+  projectStatusEnum,
+  projectEvidenceKindEnum,
+} from "@/lib/db/projects/schema"
 
 export type {
   Verification,
@@ -72,4 +77,9 @@ export type {
   NewUserPreferences,
 } from "@/lib/db/preferences/schema"
 
-export type { Project, NewProject } from "@/lib/db/projects/schema"
+export type {
+  Project,
+  NewProject,
+  ProjectEvidenceLink,
+  NewProjectEvidenceLink,
+} from "@/lib/db/projects/schema"
