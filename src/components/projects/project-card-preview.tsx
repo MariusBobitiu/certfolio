@@ -37,8 +37,8 @@ export function ProjectCardPreview({
 	return (
 		<article
 			className={cn(
-				'flex h-full flex-col rounded-3xl border border-border/70 bg-linear-to-br from-secondary/55 via-card to-card p-5 dark:border-white/7 dark:from-[#121319] dark:via-[#101116] dark:to-[#14161d]',
-				isPreview ? 'min-h-64' : 'group min-h-112 transition-colors hover:border-border/90',
+				'flex flex-col rounded-3xl border border-border/70 bg-linear-to-br from-secondary/55 via-card to-card p-5 dark:border-white/7 dark:from-[#121319] dark:via-[#101116] dark:to-[#14161d]',
+				isPreview ? 'min-h-0' : 'group h-full min-h-112 transition-colors hover:border-border/90',
 				className,
 			)}
 		>
@@ -62,7 +62,7 @@ export function ProjectCardPreview({
 						<h3
 							className={cn(
 								'font-semibold tracking-[-0.04em] text-balance text-foreground',
-								isPreview ? 'line-clamp-2 min-h-12 text-3xl' : 'line-clamp-2 min-h-18 text-2xl',
+								isPreview ? 'text-3xl sm:line-clamp-2 sm:min-h-12' : 'line-clamp-2 min-h-18 text-2xl',
 							)}
 						>
 							{title}
@@ -72,7 +72,7 @@ export function ProjectCardPreview({
 					<p
 						className={cn(
 							'text-sm leading-7 text-muted-foreground',
-							isPreview ? 'line-clamp-5 min-h-32' : 'line-clamp-4 min-h-46',
+							isPreview ? 'sm:line-clamp-5 sm:min-h-32' : 'line-clamp-4 min-h-46',
 						)}
 					>
 						{summary}
@@ -85,7 +85,7 @@ export function ProjectCardPreview({
 				<CustomBadge label='Role' value={role} />
 			</div>
 
-			<div className='mt-auto pt-4'>
+			<div className={cn(isPreview ? 'pt-6' : 'mt-auto pt-4')}>
 				{href ? (
 					<Link
 						href={href}
