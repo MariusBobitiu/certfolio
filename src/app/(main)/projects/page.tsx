@@ -37,7 +37,7 @@ export default async function ProjectsPage() {
 			<div className='absolute inset-x-0 top-0 -z-10 h-112 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_42%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.14),transparent_30%),linear-gradient(180deg,rgba(148,163,184,0.08),transparent_78%)]' />
 
 			{hasProjects ? (
-				<section className='relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/45 px-6 py-6 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset,0_18px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-7 dark:border-white/8 dark:from-background dark:via-card/20 dark:to-card/30 dark:shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]'>
+				<section className='relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/45 px-6 py-6 shadow-lg sm:px-8 sm:py-7 dark:border-white/8 dark:from-background dark:via-card/20 dark:to-card/30 dark:shadow-white/2'>
 					<div className='flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between'>
 						<div className='max-w-2xl space-y-3'>
 							<div className='inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground backdrop-blur'>
@@ -66,7 +66,7 @@ export default async function ProjectsPage() {
 					</div>
 				</section>
 			) : (
-				<section className='relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/55 px-6 py-8 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset,0_18px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-10 lg:px-10 lg:py-12 dark:border-white/8 dark:from-background dark:via-card/30 dark:to-card/40 dark:shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]'>
+				<section className='relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/55 px-6 py-8 shadow-lg sm:px-8 sm:py-10 lg:px-10 lg:py-12 dark:border-white/8 dark:from-background dark:via-card/30 dark:to-card/40 dark:shadow-white/2'>
 					<div className='max-w-3xl space-y-6'>
 						<div className='inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground backdrop-blur'>
 							Projects Workspace

@@ -151,25 +151,25 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 					</div>
 
 					<div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Total
 							</p>
 							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{projects.length}</p>
 						</div>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Published
 							</p>
 							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{publishedCount}</p>
 						</div>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Drafts
 							</p>
 							<p className='mt-2 text-3xl font-semibold tracking-[-0.04em]'>{draftCount}</p>
 						</div>
-						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+						<div className='rounded-3xl border border-border/70 bg-card/92 px-5 py-5 shadow-md dark:border-white/8 dark:shadow-white/2'>
 							<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 								Archived
 							</p>
@@ -177,7 +177,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 						</div>
 					</div>
 
-					<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+					<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2'>
 						<div className='flex flex-col gap-3 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between'>
 							<div className='space-y-2'>
 								<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
@@ -211,7 +211,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 				</section>
 			) : (
 				<section className='mt-8 grid gap-6 lg:grid-cols-[1.7fr_0.8fr]'>
-					<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+					<div className='rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2'>
 						<div className='space-y-5 border-b border-border/60 pb-5'>
 							<div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
 								<div className='space-y-3'>
@@ -234,7 +234,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 						</div>
 
 						<div className='mt-6 space-y-5'>
-							<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
+							<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7'>
 								<p className='text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground'>
 									Editorial Guidance
 								</p>
@@ -267,7 +267,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 						</div>
 					</div>
 
-					<aside className='rounded-4xl border border-border/70 bg-card/90 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-8 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none'>
+					<aside className='rounded-4xl border border-border/70 bg-card/90 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2'>
 						<div className='space-y-3'>
 							<p className='text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
 								Workspace Notes
@@ -282,7 +282,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
 						</div>
 
 						<div className='mt-6 space-y-4'>
-							<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7 dark:bg-[#101116]'>
+							<div className='rounded-3xl border border-border/70 bg-secondary/45 p-5 dark:border-white/7'>
 								<p className='text-sm font-medium text-foreground'>What to strengthen next</p>
 								<p className='mt-2 text-sm leading-6 text-muted-foreground'>
 									Add clearer outcomes, better evidence, and stronger project-specific

@@ -86,7 +86,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
 
 	return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <div className="rounded-4xl border border-border/70 bg-card/92 px-6 py-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:px-7 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none">
+      <div className="rounded-4xl border border-border/70 bg-card/92 px-6 py-5 shadow-md backdrop-blur sm:px-7 dark:border-white/8 dark:shadow-white/2">
         <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
           <div className="flex items-center gap-3">
             <div
@@ -234,7 +234,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
           </div>
         </div>
 
-        <aside className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-7 xl:sticky xl:top-24 xl:col-span-2 dark:border-white/8 dark:bg-[#17171c] dark:shadow-none">
+        <aside className="rounded-4xl border border-border/70 bg-card/88 p-6 shadow-md space-y-6 sm:p-7 xl:sticky xl:top-24 xl:col-span-2 dark:border-white/8 dark:shadow-white/2">
           <div>
             <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
               Live Preview
