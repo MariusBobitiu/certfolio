@@ -3,7 +3,12 @@ import { eq } from "drizzle-orm"
 import { config } from "dotenv"
 import { pathToFileURL } from "node:url"
 import {
+  normalizeIssuerAliases,
+  normalizeIssuerName,
+} from "./credentials/issuer-normalization"
+import {
   client,
+  IssuersTable,
   db,
   ProjectEvidenceLinksTable,
   ProjectsTable,
@@ -105,10 +110,215 @@ const demoProjects = [
   },
 ] as const
 
+const seededIssuers = [
+  {
+    slug: "amazon-web-services",
+    display_name: "Amazon Web Services",
+    normalized_name: normalizeIssuerName("Amazon Web Services"),
+    aliases: normalizeIssuerAliases(["AWS", "Amazon", "Amazon Web Services, Inc.", "Amazon Web Services", "Amazon Web Services - AWS", "Amazon Web Services (AWS)", "AWS (Amazon Web Services)", "amazon web services"]),
+    website_url: "https://aws.amazon.com",
+    logo_url: "",
+    theme_key: "aws",
+  },
+  {
+    slug: "comptia",
+    display_name: "CompTIA",
+    normalized_name: normalizeIssuerName("CompTIA"),
+    aliases: normalizeIssuerAliases(["CompTIA", "Computing Technology Industry Association", "CompTIA, Inc.", "CompTIA International", "CompTIA - Computing Technology Industry Association", "CompTIA (Computing Technology Industry Association)", "comptia"]),
+    website_url: "https://www.comptia.org",
+    logo_url: "",
+    theme_key: "comptia",
+  },
+  {
+    slug: "microsoft",
+    display_name: "Microsoft",
+    normalized_name: normalizeIssuerName("Microsoft"),
+    aliases: normalizeIssuerAliases(["MSFT", "Microsoft Learn", "Microsoft Corporation", "Microsoft Corporation - MSFT", "Microsoft Corporation (MSFT)", "Microsoft Learn", "microsoft"]),
+    website_url: "https://learn.microsoft.com",
+    logo_url: "",
+    theme_key: "microsoft",
+  },
+  {
+    slug: "google-cloud",
+    display_name: "Google Cloud",
+    normalized_name: normalizeIssuerName("Google Cloud"),
+    aliases: normalizeIssuerAliases(["GCP", "Google Cloud Platform", "Google Cloud Services", "google cloud"]),
+    website_url: "https://cloud.google.com",
+    logo_url: "",
+    theme_key: "google-cloud",
+  },
+  {
+    slug: "cisco",
+    display_name: "Cisco",
+    normalized_name: normalizeIssuerName("Cisco"),
+    aliases: normalizeIssuerAliases(["Cisco Networking Academy", "Cisco Systems", "Cisco Systems, Inc.", "cisco"]),
+    website_url: "https://www.cisco.com",
+    logo_url: "",
+    theme_key: "cisco",
+  },
+  {
+    slug: "isc2",
+    display_name: "(ISC)2",
+    normalized_name: normalizeIssuerName("(ISC)2"),
+    aliases: normalizeIssuerAliases(["ISC2", "ISC Squared", "International Information System Security Certification Consortium", "ISC2 - International Information System Security Certification Consortium", "ISC2 (International Information System Security Certification Consortium)", "isc2"]),
+    website_url: "https://www.isc2.org",
+    logo_url: "",
+    theme_key: "isc2",
+  },
+  {
+    slug: "offensive-security",
+    display_name: "Offensive Security",
+    normalized_name: normalizeIssuerName("Offensive Security"),
+    aliases: normalizeIssuerAliases(["OffSec", "Offensive Security, Inc.", "Offensive Security Limited", "Offensive Security - OffSec", "Offensive Security (OffSec)", "offensive security"]),
+    website_url: "https://www.offensive-security.com",
+    logo_url: "",
+    theme_key: "offensive-security",
+  },
+  {
+    slug: "red-hat",
+    display_name: "Red Hat",
+    normalized_name: normalizeIssuerName("Red Hat"),
+    aliases: normalizeIssuerAliases(["RedHat", "Red Hat, Inc.", "Red Hat Software", "Red Hat - RedHat", "Red Hat (RedHat)", "red hat"]),
+    website_url: "https://www.redhat.com",
+    logo_url: "",
+    theme_key: "red-hat",
+  },
+  {
+    slug: "linux-foundation",
+    display_name: "Linux Foundation",
+    normalized_name: normalizeIssuerName("Linux Foundation"),
+    aliases: normalizeIssuerAliases(["Linux Foundation, Inc.", "The Linux Foundation", "Linux Foundation - The Linux Foundation", "Linux Foundation (The Linux Foundation)", "linux foundation"]),
+    website_url: "https://www.linuxfoundation.org",
+    logo_url: "",
+    theme_key: "linux-foundation",
+  },
+  {
+    slug: "pmi",
+    display_name: "Project Management Institute",
+    normalized_name: normalizeIssuerName("Project Management Institute"),
+    aliases: normalizeIssuerAliases(["PMI", "Project Management Institute, Inc.", "Project Management Institute - PMI", "Project Management Institute (PMI)", "project management institute"]),
+    website_url: "https://www.pmi.org",
+    logo_url: "",
+    theme_key: "pmi",
+  },
+  {
+    slug: "tryhackme",
+    display_name: "TryHackMe",
+    normalized_name: normalizeIssuerName("TryHackMe"),
+    aliases: normalizeIssuerAliases(["Try Hack Me", "TryHackMe Limited", "TryHackMe - Try Hack Me", "TryHackMe (Try Hack Me)", "tryhackme"]),
+    website_url: "https://tryhackme.com",
+    logo_url: "",
+    theme_key: "tryhackme",
+  },
+  {
+    slug: "ec-council",
+    display_name: "EC-Council",
+    normalized_name: normalizeIssuerName("EC-Council"),
+    aliases: normalizeIssuerAliases(["EC-Council", "International Council of E-Commerce Consultants", "EC-Council - International Council of E-Commerce Consultants", "EC-Council (International Council of E-Commerce Consultants)", "ec-council"]),
+    website_url: "https://www.eccouncil.org",
+    logo_url: "",
+    theme_key: "ec-council",
+  },
+  {
+    slug: "vmware",
+    display_name: "VMware",
+    normalized_name: normalizeIssuerName("VMware"),
+    aliases: normalizeIssuerAliases(["VMware, Inc.", "VMware, Inc.", "VMware - VMware, Inc.", "VMware (VMware, Inc.)", "vmware"]),
+    website_url: "https://www.vmware.com",
+    logo_url: "",
+    theme_key: "vmware",
+  },
+  {
+    slug: "oracle",
+    display_name: "Oracle",
+    normalized_name: normalizeIssuerName("Oracle"),
+    aliases: normalizeIssuerAliases(["Oracle Corporation", "Oracle Corporation - Oracle", "Oracle Corporation (Oracle)", "oracle"]),
+    website_url: "https://www.oracle.com",
+    logo_url: "",
+    theme_key: "oracle",
+  },
+  {
+    slug: "salesforce",
+    display_name: "Salesforce",
+    normalized_name: normalizeIssuerName("Salesforce"),
+    aliases: normalizeIssuerAliases(["Salesforce.com", "Salesforce, Inc.", "Salesforce - Salesforce.com", "Salesforce (Salesforce.com)", "salesforce"]),
+    website_url: "https://www.salesforce.com",
+    logo_url: "",
+    theme_key: "salesforce",
+  },
+  {
+    slug: "ibm",
+    display_name: "IBM",
+    normalized_name: normalizeIssuerName("IBM"),
+    aliases: normalizeIssuerAliases(["International Business Machines", "IBM Corporation", "IBM - International Business Machines", "IBM (International Business Machines)", "ibm"]),
+    website_url: "https://www.ibm.com",
+    logo_url: "",
+    theme_key: "ibm",
+  },
+  {
+    slug: "pearson-vue",
+    display_name: "Pearson VUE",
+    normalized_name: normalizeIssuerName("Pearson VUE"),
+    aliases: normalizeIssuerAliases(["Pearson", "Pearson VUE, Inc.", "Pearson VUE - Pearson", "Pearson VUE (Pearson)", "pearson vue"]),
+    website_url: "https://home.pearsonvue.com",
+    logo_url: "",
+    theme_key: "pearson-vue",
+  },
+  {
+    slug: "tcm-sec",
+    display_name: "TCM Security",
+    normalized_name: normalizeIssuerName("TCM Security"),
+    aliases: normalizeIssuerAliases(["TCM", "TCM Security, Inc.", "TCM Security - TCM", "TCM Security (TCM)", "tcm security"]),
+    website_url: "https://www.tcm-sec.com",
+    logo_url: "",
+    theme_key: "tcm-security",
+  }
+] as const
+
 export async function seedDatabase(options: SeedOptions = {}) {
   const { closeConnection = false } = options
 
   try {
+    for (const issuer of seededIssuers) {
+      const [existingIssuer] = await db
+        .select({ id: IssuersTable.id })
+        .from(IssuersTable)
+        .where(eq(IssuersTable.slug, issuer.slug))
+        .limit(1)
+
+      if (existingIssuer) {
+        await db
+          .update(IssuersTable)
+          .set({
+            display_name: issuer.display_name,
+            normalized_name: issuer.normalized_name,
+            aliases: issuer.aliases,
+            kind: "seeded",
+            website_url: issuer.website_url,
+            logo_url: issuer.logo_url,
+            theme_key: issuer.theme_key,
+            created_by_user_id: null,
+            updated_at: new Date(),
+          })
+          .where(eq(IssuersTable.id, existingIssuer.id))
+        continue
+      }
+
+      await db.insert(IssuersTable).values({
+        slug: issuer.slug,
+        display_name: issuer.display_name,
+        normalized_name: issuer.normalized_name,
+        aliases: issuer.aliases,
+        kind: "seeded",
+        website_url: issuer.website_url,
+        logo_url: issuer.logo_url,
+        theme_key: issuer.theme_key,
+        created_by_user_id: null,
+      })
+    }
+
+    console.log("✓ Seed issuers ready")
+
     const [existingAdmin] = await db
       .select({ id: UsersTable.id })
       .from(UsersTable)

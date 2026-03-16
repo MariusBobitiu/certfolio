@@ -21,12 +21,14 @@ export default function DashboardPage() {
 			<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
 				{[...Array(3)].map((_, i) => (
 					<div key={i} className='rounded-lg border border-border/50 bg-card p-6 backdrop-blur hover:border-border transition-colors'>
-						<div className='h-32 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-md mb-4' />
+						<div className='h-32 bg-linear-to-br from-blue-500/10 to-cyan-500/10 rounded-md mb-4' />
 						<h3 className='font-semibold text-sm'>Certificate {i + 1}</h3>
 						<p className='text-xs text-muted-foreground mt-1'>Add your certificates here</p>
 					</div>
 				))}
 			</div>
+
+			<div data-iframe-width="150" data-iframe-height="270" data-share-badge-id="0901a374-cdfa-4dc8-b56c-9c35c8cde19b" data-share-badge-host="https://www.credly.com"></div><script type="text/javascript" async src="//cdn.credly.com/assets/utilities/embed.js"></script>
 		</div>
 	)
 }

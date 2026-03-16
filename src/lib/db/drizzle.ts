@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import * as authSchema from "@/lib/db/auth/schema"
+import * as credentialsSchema from "@/lib/db/credentials/schema"
 import * as preferencesSchema from "@/lib/db/preferences/schema"
 import * as projectsSchema from "@/lib/db/projects/schema"
 
@@ -14,10 +15,14 @@ const databaseUrl: string = connectionString
 
 const isLocalConnection = /localhost|127\.0\.0\.1/.test(databaseUrl)
 
-const schema = { ...authSchema, ...preferencesSchema, ...projectsSchema }
+const schema = {
+  ...authSchema,
+  ...preferencesSchema,
+  ...projectsSchema,
+  ...credentialsSchema,
+}
 
 declare global {
-  // eslint-disable-next-line no-var
   var __certfolioSqlClient: ReturnType<typeof postgres> | undefined
 }
 
@@ -55,6 +60,15 @@ export {
   projectEvidenceKindEnum,
 } from "@/lib/db/projects/schema"
 
+export {
+  CredentialsTable,
+  IssuersTable,
+  credentialStatusEnum,
+  credentialSourceTypeEnum,
+  credentialVerificationStatusEnum,
+  issuerKindEnum,
+} from "@/lib/db/credentials/schema"
+
 export type {
   Verification,
   NewVerification,
@@ -71,6 +85,13 @@ export type {
   UserMfaMethod,
   UserRecoveryCode,
 } from "@/lib/db/auth/schema"
+
+export type {
+  Credential,
+  Issuer,
+  NewCredential,
+  NewIssuer,
+} from "@/lib/db/credentials/schema"
 
 export type {
   UserPreferences,
