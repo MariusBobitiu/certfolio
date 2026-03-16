@@ -42,4 +42,7 @@ next-env.d.ts
 
 # drizzle generated files
 drizzle/*
-drizzle.worktrees
+drizzle
+
+# git worktrees
+.worktrees
