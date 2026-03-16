@@ -1,350 +1,628 @@
-import {
-  BadgeCheck,
-  Building2,
-  CalendarDays,
-  Fingerprint,
-  LayoutTemplate,
-  Link2,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react"
+"use client"
 
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { useMemo, useState } from "react"
+import { Plus } from "lucide-react"
+import { useAction } from "next-safe-action/hooks"
+import { toast } from "sonner"
+
+import { CredentialCardPreview } from "@/components/credentials/credential-card-preview"
+import { IssuerAutocompleteInput } from "@/components/credentials/issuer-autocomplete-input"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+
+import { createCredentialAction } from "./action"
+
+type CredentialRecord = {
+  id: string
+  slug: string
+  title: string
+  sourceType: "credly" | "issuer_link" | "manual" | "uploaded_certificate"
+  verificationStatus: "verified_external" | "linked_external" | "self_declared"
+  issuedOn: string
+  summary: string
+  status: "draft" | "published" | "archived"
+  issuer: {
+    id: string
+    displayName: string
+    normalizedName: string
+    aliases: string[]
+    kind: "seeded" | "custom"
+    themeKey: string
+    logoUrl: string
+  }
+}
+
+type IssuerRecord = CredentialRecord["issuer"]
+
+type CreateDraftState = {
+  title: string
+  issuerQuery: string
+  issuerId: string
+  sourceType: "credly" | "issuer_link" | "manual"
+  issuedOn: string
+  verificationUrl: string
+  credentialCode: string
+  summary: string
+}
+
+type ActionValidationErrors = {
+  title?: { _errors?: string[] }
+  customIssuerName?: { _errors?: string[] }
+  verificationUrl?: { _errors?: string[] }
+  issuedOn?: { _errors?: string[] }
+}
 
 const foundationSignals = [
-  "Trust signals before visual polish",
-  "Structured for verification and reuse",
-  "Built in phases like projects",
+  "Issuer-led credential identity",
+  "External links and self-declared entries kept distinct",
+  "Built to expand into richer detail editing next",
 ] as const
 
-const rolloutPhases = [
-  {
-    title: "Phase 1: Page shell",
-    description:
-      "Lock the workspace structure, the preview card language, and the minimum fields a credential needs before introducing persistence.",
-    points: [
-      "Featured card layout and collection sections",
-      "Minimum display model for issuer, title, dates, and verification",
-      "Empty-state guidance for what belongs here",
-    ],
-  },
-  {
-    title: "Phase 2: Authoring flow",
-    description:
-      "Add create and edit flows once the content shape is stable enough that the form is not guessing at the schema.",
-    points: [
-      "Draft credential creation",
-      "Issuer branding, credential URL, and optional credential code",
-      "Published, draft, and expired state handling",
-    ],
-  },
-  {
-    title: "Phase 3: Schema and profile reuse",
-    description:
-      "Persist credentials only after the display contract is clear, then reuse the same data on profile surfaces without remapping.",
-    points: [
-      "Database table and relations",
-      "Featured ordering and public profile modules",
-      "Renewal and expiry support where relevant",
-    ],
-  },
-] as const
+const emptyDraft: CreateDraftState = {
+  title: "",
+  issuerQuery: "",
+  issuerId: "",
+  sourceType: "manual",
+  issuedOn: "",
+  verificationUrl: "",
+  credentialCode: "",
+  summary: "",
+}
 
-const minimumFields = [
-  {
-    label: "Credential title",
-    detail: "The exact name shown on the card and future profile modules.",
-    icon: LayoutTemplate,
-  },
-  {
-    label: "Issuer",
-    detail: "Provider or institution, with room for brand treatment later.",
-    icon: Building2,
-  },
-  {
-    label: "Issue date",
-    detail: "Needed immediately for card chronology and recency cues.",
-    icon: CalendarDays,
-  },
-  {
-    label: "Verification state",
-    detail: "Verified, pending, or unverified should be visible from day one.",
-    icon: ShieldCheck,
-  },
-  {
-    label: "Credential code",
-    detail: "Optional now, but the shape should already allow it.",
-    icon: Fingerprint,
-  },
-  {
-    label: "Verification link",
-    detail: "Optional in the shell, but important enough to design for now.",
-    icon: Link2,
-  },
-] as const
+export function CredentialsWorkspace({
+  initialCredentials,
+  availableIssuers,
+}: {
+  initialCredentials: CredentialRecord[]
+  availableIssuers: IssuerRecord[]
+}) {
+  const [credentials, setCredentials] = useState(initialCredentials)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [draft, setDraft] = useState<CreateDraftState>(emptyDraft)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "draft" | "published" | "archived"
+  >("all")
 
-const surfaceSections = [
-  {
-    eyebrow: "Featured row",
-    title: "High-confidence credentials first",
-    description:
-      "The strongest or most relevant certifications should anchor the page in a horizontally scannable band.",
-  },
-  {
-    eyebrow: "Collection grid",
-    title: "Everything else stays readable",
-    description:
-      "After the featured row, the rest of the collection can use a simpler listing surface with the same data contract.",
-  },
-  {
-    eyebrow: "Status cues",
-    title: "Draft, verified, expired",
-    description:
-      "State should be explicit so the workspace can handle unfinished entries before public reuse exists.",
-  },
-] as const
+  const { execute, isPending, result } = useAction(createCredentialAction, {
+    onSuccess: ({ data }) => {
+      if (data?.failure || !data?.credential || !data?.issuer) {
+        setSubmitError(
+          data?.failure ?? "We could not create the credential right now."
+        )
+        return
+      }
 
-const previewCards = [
-  {
-    issuer: "AWS",
-    title: "AWS Solutions Architect Associate",
-    issued: "Issued May 2024",
-    status: "Verified",
-    accent:
-      "from-zinc-900 via-stone-900 to-slate-800 text-white border-white/10",
-    logo:
-      "bg-linear-to-br from-zinc-800 via-zinc-900 to-black text-orange-300 border-white/12",
-  },
-  {
-    issuer: "CompTIA",
-    title: "Security+",
-    issued: "Issued Oct 2023",
-    status: "Verified",
-    accent:
-      "from-red-700 via-rose-700 to-red-800 text-white border-white/10",
-    logo:
-      "bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white border-white/20",
-  },
-  {
-    issuer: "Microsoft",
-    title: "Azure Fundamentals",
-    issued: "Issued Sep 2022",
-    status: "Verified",
-    accent:
-      "from-blue-700 via-indigo-700 to-blue-900 text-white border-white/10",
-    logo:
-      "bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white border-white/20",
-  },
-] as const
+      setCredentials((current) => [
+        {
+          id: data.credential.id,
+          slug: data.credential.slug,
+          title: data.credential.title,
+          sourceType: data.credential.sourceType,
+          verificationStatus: data.credential.verificationStatus,
+          issuedOn: data.credential.issuedOn,
+          summary: data.credential.summary,
+          status: data.credential.status,
+          issuer: data.issuer,
+        },
+        ...current,
+      ])
 
-export function CredentialsWorkspace() {
+      setDraft(emptyDraft)
+      setSubmitError(null)
+      setIsDialogOpen(false)
+      toast.success("Credential created")
+    },
+    onError: ({ error }) => {
+      setSubmitError(
+        error.serverError ?? "We could not create the credential right now."
+      )
+    },
+  })
+
+  const validationErrors =
+    (result.validationErrors as ActionValidationErrors | undefined) ?? {}
+
+  const draftCount = credentials.filter(
+    (credential) => credential.status === "draft"
+  ).length
+  const publishedCount = credentials.filter(
+    (credential) => credential.status === "published"
+  ).length
+  const archivedCount = credentials.filter(
+    (credential) => credential.status === "archived"
+  ).length
+
+  const filteredCredentials =
+    activeFilter === "all"
+      ? credentials
+      : credentials.filter((credential) => credential.status === activeFilter)
+
+  const activeFilterDescription =
+    activeFilter === "all"
+      ? "All credentials in one workspace, regardless of where they are in the publishing flow."
+      : activeFilter === "draft"
+        ? "Credentials still being shaped before richer detail editing and public reuse."
+        : activeFilter === "published"
+          ? "Credentials that are ready to represent your professional identity more directly."
+          : "Credentials kept on record without staying in the active collection."
+
+  const sourceTypeDescription =
+    draft.sourceType === "credly"
+      ? "Credly links are treated as externally verified entries."
+      : draft.sourceType === "issuer_link"
+        ? "Issuer links are treated as externally linked entries."
+        : "Manual entries are kept distinct as self-declared credentials."
+
+  const sourceTypeOptions = [
+    {
+      value: "manual",
+      label: "Manual",
+    },
+    {
+      value: "issuer_link",
+      label: "Issuer link",
+    },
+    {
+      value: "credly",
+      label: "Credly",
+    },
+  ] as const
+
+  const selectedIssuer = useMemo(
+    () =>
+      draft.issuerId
+        ? availableIssuers.find((issuer) => issuer.id === draft.issuerId) ?? null
+        : null,
+    [availableIssuers, draft.issuerId]
+  )
+
+  const previewIssuer = selectedIssuer ?? {
+    id: "preview-custom",
+    displayName: draft.issuerQuery.trim() || "Custom issuer",
+    normalizedName: "",
+    aliases: [],
+    kind: "custom" as const,
+    themeKey: "",
+    logoUrl: "",
+  }
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setDraft(emptyDraft)
+      setSubmitError(null)
+    }
+
+    setIsDialogOpen(open)
+  }
+
+  const handleDraftChange = <K extends keyof CreateDraftState>(
+    field: K,
+    value: CreateDraftState[K]
+  ) => {
+    if (submitError) {
+      setSubmitError(null)
+    }
+
+    setDraft((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  const handleIssuerInputChange = (value: string) => {
+    handleDraftChange("issuerQuery", value)
+    setDraft((current) => ({
+      ...current,
+      issuerQuery: value,
+      issuerId:
+        current.issuerId &&
+        availableIssuers.some(
+          (issuer) =>
+            issuer.id === current.issuerId &&
+            issuer.displayName.toLowerCase() === value.trim().toLowerCase()
+        )
+          ? current.issuerId
+          : "",
+    }))
+  }
+
+  const handleCreateCredential = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSubmitError(null)
+
+    execute({
+      title: draft.title,
+      issuerId: draft.issuerId,
+      customIssuerName: draft.issuerId ? "" : draft.issuerQuery,
+      sourceType: draft.sourceType,
+      issuedOn: draft.issuedOn,
+      verificationUrl: draft.verificationUrl,
+      credentialCode: draft.credentialCode,
+      summary: draft.summary,
+    })
+  }
+
   return (
-    <div className="space-y-8">
-      <section className="relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/55 px-6 py-8 shadow-lg sm:px-8 sm:py-10 lg:px-10 lg:py-12 dark:border-white/8 dark:from-background dark:via-card/30 dark:to-card/40 dark:shadow-white/2">
-        <div className="max-w-4xl space-y-6">
-          <div className="inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground backdrop-blur">
-            Credentials Workspace
-          </div>
-
-          <div className="space-y-4">
-            <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
-              Shape credentials into proof, not just badges.
-            </h1>
-            <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-              This first pass defines what the credentials area needs to
-              contain before a database table exists: the card language, the
-              minimum data we trust, and the collection sections that will make
-              the workspace usable.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            {foundationSignals.map((signal) => (
-              <div
-                key={signal}
-                className="rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm text-foreground/85 backdrop-blur dark:border-white/8 dark:bg-white/3"
-              >
-                {signal}
+    <>
+      <div className="space-y-8">
+        <section className="relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/55 px-6 py-8 shadow-lg sm:px-8 sm:py-10 lg:px-10 lg:py-12 dark:border-white/8 dark:from-background dark:via-card/30 dark:to-card/40 dark:shadow-white/2">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl space-y-6">
+              <div className="inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground backdrop-blur">
+                Credentials Workspace
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        {rolloutPhases.map((phase) => (
-          <article
-            key={phase.title}
-            className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md dark:border-white/8 dark:shadow-white/2"
-          >
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground dark:border-white/8 dark:bg-white/4">
-                <Sparkles className="size-3.5" />
-                Build sequence
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-semibold tracking-[-0.03em]">
-                  {phase.title}
-                </h2>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  {phase.description}
+              <div className="space-y-4">
+                <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
+                  Structure your certifications around issuer identity and proof.
+                </h1>
+                <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
+                  This workspace now supports real credential records, seeded or
+                  custom issuers, and a clean split between externally linked and
+                  self-declared entries.
                 </p>
               </div>
-              <div className="space-y-2 border-t border-border/60 pt-4 dark:border-white/8">
-                {phase.points.map((point) => (
-                  <p
-                    key={point}
-                    className="text-sm leading-6 text-foreground/85"
+
+              <div className="flex flex-wrap gap-3">
+                {foundationSignals.map((signal) => (
+                  <div
+                    key={signal}
+                    className="rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm text-foreground/85 backdrop-blur dark:border-white/8 dark:bg-white/3"
                   >
-                    {point}
-                  </p>
+                    {signal}
+                  </div>
                 ))}
               </div>
             </div>
-          </article>
-        ))}
-      </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md sm:p-8 dark:border-white/8 dark:shadow-white/2">
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Minimum model
-            </p>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-balance">
-              What the first credential record should already know.
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              These are the fields worth designing around now, even if some stay
-              optional until the authoring flow lands.
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {minimumFields.map((field) => {
-              const Icon = field.icon
-
-              return (
-                <div
-                  key={field.label}
-                  className="rounded-3xl border border-border/70 bg-background/70 p-4 dark:border-white/8 dark:bg-white/3"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-2xl border border-border/70 bg-card p-2.5 dark:border-white/8 dark:bg-white/4">
-                      <Icon className="size-4 text-foreground/80" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <h3 className="text-sm font-semibold text-foreground">
-                        {field.label}
-                      </h3>
-                      <p className="text-sm leading-6 text-muted-foreground">
-                        {field.detail}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </article>
-
-        <article className="rounded-4xl border border-border/70 bg-linear-to-br from-secondary/45 via-card to-primary/5 p-6 shadow-md sm:p-8 dark:border-white/8 dark:from-secondary/25 dark:via-card/30 dark:to-primary/10 dark:shadow-white/2">
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Page structure
-            </p>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-balance">
-              What the shell should display before persistence exists.
-            </h2>
-          </div>
-
-          <div className="mt-6 space-y-3">
-            {surfaceSections.map((section) => (
-              <div
-                key={section.eyebrow}
-                className="rounded-3xl border border-border/70 bg-card/88 p-4 dark:border-white/8 dark:bg-white/3"
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  {section.eyebrow}
-                </p>
-                <h3 className="mt-2 text-lg font-semibold tracking-[-0.02em]">
-                  {section.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {section.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md sm:p-8 dark:border-white/8 dark:shadow-white/2">
-        <div className="flex flex-col gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between dark:border-white/8">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Card direction
-            </p>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-balance">
-              Initial featured certification treatment.
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              This is close to the visual direction in your mock, but expressed
-              as a reusable Certfolio shell instead of hard-coded one-off cards.
-            </p>
-          </div>
-
-          <Badge
-            variant="outline"
-            className="h-auto rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.2em]"
-          >
-            Preview only
-          </Badge>
-        </div>
-
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          {previewCards.map((card) => (
-            <article
-              key={card.title}
-              className={cn(
-                "overflow-hidden rounded-[28px] border bg-linear-to-br shadow-lg",
-                card.accent
-              )}
+            <Button
+              className="rounded-full lg:shrink-0"
+              onClick={() => setIsDialogOpen(true)}
             >
-              <div className="space-y-5 p-5">
-                <div className="flex items-start gap-4">
-                  <div
-                    className={cn(
-                      "flex size-18 shrink-0 items-center justify-center rounded-2xl border text-lg font-semibold tracking-[-0.03em]",
-                      card.logo
-                    )}
+              <Plus className="size-4" />
+              Add credential
+            </Button>
+          </div>
+        </section>
+
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => setActiveFilter("all")}
+            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+              activeFilter === "all"
+                ? "border-foreground/15 bg-card"
+                : "border-border/70 bg-card/92 hover:border-border/90"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Total
+            </p>
+            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+              {credentials.length}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter("draft")}
+            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+              activeFilter === "draft"
+                ? "border-amber-500/30 bg-amber-500/5"
+                : "border-border/70 bg-card/92 hover:border-border/90"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Drafts
+            </p>
+            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+              {draftCount}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter("published")}
+            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+              activeFilter === "published"
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : "border-border/70 bg-card/92 hover:border-border/90"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Published
+            </p>
+            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+              {publishedCount}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter("archived")}
+            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+              activeFilter === "archived"
+                ? "border-foreground/15 bg-muted/40"
+                : "border-border/70 bg-card/92 hover:border-border/90"
+            }`}
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Archived
+            </p>
+            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+              {archivedCount}
+            </p>
+          </button>
+        </section>
+
+        <section className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2">
+          <div className="flex flex-col gap-4 border-b border-border/60 pb-5 dark:border-white/8">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Collection Surface
+              </p>
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">
+                {activeFilter === "all"
+                  ? "All credentials"
+                  : activeFilter === "draft"
+                    ? "Draft credentials"
+                    : activeFilter === "published"
+                      ? "Published credentials"
+                      : "Archived credentials"}
+              </h2>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                {activeFilterDescription}
+              </p>
+            </div>
+          </div>
+
+          {filteredCredentials.length > 0 ? (
+            <div className="mt-6 grid gap-4 xl:grid-cols-2">
+              {filteredCredentials.map((credential) => (
+                <CredentialCardPreview
+                  key={credential.id}
+                  issuerDisplayName={credential.issuer.displayName}
+                  issuerThemeKey={credential.issuer.themeKey}
+                  title={credential.title}
+                  issuedOn={credential.issuedOn}
+                  sourceType={credential.sourceType}
+                  status={credential.status}
+                  verificationStatus={credential.verificationStatus}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-4xl border border-dashed border-border/70 bg-background/60 px-6 py-10 text-center dark:border-white/8 dark:bg-white/3">
+              <h3 className="text-xl font-semibold tracking-[-0.03em]">
+                No credentials in this view yet.
+              </h3>
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Start with a credential title, issuer, and issue month. Richer
+                editing and uploaded certificate support land in the next phase.
+              </p>
+              <Button
+                className="mt-6 rounded-full"
+                onClick={() => setIsDialogOpen(true)}
+              >
+                <Plus className="size-4" />
+                Add first credential
+              </Button>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create credential</DialogTitle>
+            <DialogDescription>
+              Start with the credential facts that affect list rendering and issuer
+              identity. Detail editing and uploads come in the next phase.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateCredential} className="space-y-6">
+            <FieldGroup>
+              <Field data-invalid={Boolean(validationErrors.title?._errors?.[0])}>
+                <FieldLabel htmlFor="credential-title">Credential title</FieldLabel>
+                <Input
+                  id="credential-title"
+                  value={draft.title}
+                  onChange={(event) => handleDraftChange("title", event.target.value)}
+                  placeholder="AWS Solutions Architect Associate"
+                  disabled={isPending}
+                />
+                <FieldError
+                  errors={[{ message: validationErrors.title?._errors?.[0] }]}
+                />
+              </Field>
+
+              <Field
+                data-invalid={Boolean(validationErrors.customIssuerName?._errors?.[0])}
+              >
+                <FieldLabel>Issuer</FieldLabel>
+                <IssuerAutocompleteInput
+                  issuers={availableIssuers}
+                  value={draft.issuerQuery}
+                  selectedIssuerId={draft.issuerId || null}
+                  onChange={handleIssuerInputChange}
+                  onSelectIssuer={(issuer) =>
+                    setDraft((current) => ({
+                      ...current,
+                      issuerQuery: issuer.displayName,
+                      issuerId: issuer.id,
+                    }))
+                  }
+                  disabled={isPending}
+                />
+                <FieldDescription>
+                  Search seeded issuers first. If there is no match, a custom
+                  issuer will be created automatically.
+                </FieldDescription>
+                <FieldError
+                  errors={[
+                    { message: validationErrors.customIssuerName?._errors?.[0] },
+                  ]}
+                />
+              </Field>
+
+              <div className="grid gap-6 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="credential-source-type">Source type</FieldLabel>
+                  <Select
+                    value={draft.sourceType}
+                    onValueChange={(value) =>
+                      handleDraftChange(
+                        "sourceType",
+                        value as CreateDraftState["sourceType"]
+                      )
+                    }
+                    disabled={isPending}
                   >
-                    {card.issuer.slice(0, 3)}
-                  </div>
+                    <SelectTrigger id="credential-source-type" className="w-full">
+                      <SelectValue placeholder="Select source type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sourceTypeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="uploaded_certificate" disabled>
+                        Uploaded certificate (detail phase)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription>{sourceTypeDescription}</FieldDescription>
+                </Field>
 
-                  <div className="min-w-0 space-y-2">
-                    <p className="text-sm font-medium text-white/78">
-                      {card.issuer}
-                    </p>
-                    <h3 className="text-2xl font-semibold tracking-[-0.04em] text-balance">
-                      {card.title}
-                    </h3>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-black/18 px-3 py-1 text-sm font-medium text-emerald-200 ring-1 ring-white/10">
-                      <BadgeCheck className="size-4" />
-                      {card.status}
-                    </div>
-                  </div>
-                </div>
+                <Field data-invalid={Boolean(validationErrors.issuedOn?._errors?.[0])}>
+                  <FieldLabel htmlFor="issued-on">Issue month</FieldLabel>
+                  <Input
+                    id="issued-on"
+                    type="month"
+                    value={draft.issuedOn}
+                    onChange={(event) =>
+                      handleDraftChange("issuedOn", event.target.value)
+                    }
+                    disabled={isPending}
+                  />
+                  <FieldError
+                    errors={[{ message: validationErrors.issuedOn?._errors?.[0] }]}
+                  />
+                </Field>
               </div>
 
-              <div className="border-t border-white/10 bg-black/12 px-5 py-4">
-                <p className="text-sm font-medium text-white/82">{card.issued}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    </div>
+              {(draft.sourceType === "credly" ||
+                draft.sourceType === "issuer_link") && (
+                <Field
+                  data-invalid={Boolean(
+                    validationErrors.verificationUrl?._errors?.[0]
+                  )}
+                >
+                  <FieldLabel htmlFor="verification-url">Verification URL</FieldLabel>
+                  <Input
+                    id="verification-url"
+                    type="url"
+                    value={draft.verificationUrl}
+                    onChange={(event) =>
+                      handleDraftChange("verificationUrl", event.target.value)
+                    }
+                    placeholder="https://..."
+                    disabled={isPending}
+                  />
+                  <FieldError
+                    errors={[
+                      { message: validationErrors.verificationUrl?._errors?.[0] },
+                    ]}
+                  />
+                </Field>
+              )}
+
+              <Field>
+                <FieldLabel htmlFor="credential-code">Credential code</FieldLabel>
+                <Input
+                  id="credential-code"
+                  value={draft.credentialCode}
+                  onChange={(event) =>
+                    handleDraftChange("credentialCode", event.target.value)
+                  }
+                  placeholder="Optional"
+                  disabled={isPending}
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="credential-summary">Summary</FieldLabel>
+                <Textarea
+                  id="credential-summary"
+                  value={draft.summary}
+                  onChange={(event) =>
+                    handleDraftChange("summary", event.target.value)
+                  }
+                  placeholder="Optional context for why this credential matters."
+                  disabled={isPending}
+                />
+              </Field>
+            </FieldGroup>
+
+            <FieldError errors={submitError ? [{ message: submitError }] : []} />
+
+            <div className="space-y-3 rounded-3xl border border-border/70 bg-background/70 p-4 dark:border-white/8 dark:bg-white/3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Card preview
+              </p>
+              <CredentialCardPreview
+                issuerDisplayName={previewIssuer.displayName}
+                issuerThemeKey={previewIssuer.themeKey}
+                title={draft.title.trim() || "Credential title"}
+                issuedOn={
+                  draft.issuedOn
+                    ? `${draft.issuedOn}-01T00:00:00.000Z`
+                    : new Date().toISOString()
+                }
+                sourceType={draft.sourceType}
+                status="draft"
+                verificationStatus={
+                  draft.sourceType === "credly"
+                    ? "verified_external"
+                    : draft.sourceType === "issuer_link"
+                      ? "linked_external"
+                      : "self_declared"
+                }
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="submit" disabled={isPending}>
+                Create credential
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
