@@ -1,8 +1,16 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 
-import { Input } from "@/components/ui/input"
+import {
+  Autocomplete,
+  AutocompleteContent,
+  AutocompleteEmpty,
+  AutocompleteInput,
+  AutocompleteItem,
+  AutocompleteList,
+} from "@/components/ui/autocomplete"
 import { cn } from "@/lib/utils"
 
 export type IssuerAutocompleteOption = {
@@ -19,6 +27,7 @@ export function IssuerAutocompleteInput({
   selectedIssuerId,
   onChange,
   onSelectIssuer,
+  onSelectCustomIssuer,
   disabled,
 }: {
   issuers: IssuerAutocompleteOption[]
@@ -26,25 +35,66 @@ export function IssuerAutocompleteInput({
   selectedIssuerId: string | null
   onChange: (value: string) => void
   onSelectIssuer: (issuer: IssuerAutocompleteOption) => void
+  onSelectCustomIssuer: (value: string) => void
   disabled?: boolean
 }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
   const normalizedValue = value.trim().toLowerCase()
+
   const filteredIssuers = useMemo(() => {
-    if (!normalizedValue) {
-      return issuers.slice(0, 6)
-    }
+    const scoredIssuers = issuers
+      .map((issuer) => {
+        const displayName = issuer.displayName.toLowerCase()
+        const normalizedName = issuer.normalizedName.toLowerCase()
+        const aliases = issuer.aliases.map((alias) => alias.toLowerCase())
 
-    return issuers
-      .filter((issuer) => {
-        const haystack = [
-          issuer.displayName.toLowerCase(),
-          issuer.normalizedName.toLowerCase(),
-          ...issuer.aliases.map((alias) => alias.toLowerCase()),
-        ]
+        let score = 0
 
-        return haystack.some((entry) => entry.includes(normalizedValue))
+        if (!normalizedValue) {
+          score = issuer.kind === "seeded" ? 1 : 0
+        } else if (
+          displayName === normalizedValue ||
+          normalizedName === normalizedValue ||
+          aliases.includes(normalizedValue)
+        ) {
+          score = 6
+        } else if (
+          displayName.startsWith(normalizedValue) ||
+          normalizedName.startsWith(normalizedValue) ||
+          aliases.some((alias) => alias.startsWith(normalizedValue))
+        ) {
+          score = 5
+        } else if (
+          displayName.includes(normalizedValue) ||
+          normalizedName.includes(normalizedValue) ||
+          aliases.some((alias) => alias.includes(normalizedValue))
+        ) {
+          score = 4
+        }
+
+        if (score === 0) {
+          return null
+        }
+
+        return { issuer, score }
       })
-      .slice(0, 6)
+      .filter(Boolean) as Array<{ issuer: IssuerAutocompleteOption; score: number }>
+
+    return scoredIssuers
+      .sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score
+        }
+
+        if (left.issuer.kind !== right.issuer.kind) {
+          return left.issuer.kind === "seeded" ? -1 : 1
+        }
+
+        return left.issuer.displayName.localeCompare(right.issuer.displayName)
+      })
+      .map((entry) => entry.issuer)
+      .slice(0, 8)
   }, [issuers, normalizedValue])
 
   const selectedIssuer = selectedIssuerId
@@ -62,60 +112,150 @@ export function IssuerAutocompleteInput({
     (!selectedIssuer ||
       selectedIssuer.displayName.toLowerCase() !== normalizedValue)
 
+  const optionCount = filteredIssuers.length + (willCreateCustomIssuer ? 1 : 0)
+
+  const handleInputChange = (nextValue: string) => {
+    setActiveIndex(0)
+    setIsOpen(true)
+    onChange(nextValue)
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || optionCount === 0) {
+      if (event.key === "ArrowDown" && optionCount > 0) {
+        event.preventDefault()
+        setIsOpen(true)
+      }
+      return
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault()
+      setActiveIndex((current) =>
+        current >= optionCount - 1 ? 0 : current + 1
+      )
+      return
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault()
+      setActiveIndex((current) =>
+        current <= 0 ? optionCount - 1 : current - 1
+      )
+      return
+    }
+
+    if (event.key === "Enter") {
+      const activeIssuer = filteredIssuers[activeIndex]
+      if (activeIssuer) {
+        event.preventDefault()
+        onSelectIssuer(activeIssuer)
+        setIsOpen(false)
+        return
+      }
+
+      if (willCreateCustomIssuer && activeIndex === filteredIssuers.length) {
+        event.preventDefault()
+        onSelectCustomIssuer(value.trim())
+        setIsOpen(false)
+        return
+      }
+    }
+
+    if (event.key === "Escape") {
+      setIsOpen(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
-      <Input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="Search issuers or type a custom one"
-        disabled={disabled}
-      />
-
-      {filteredIssuers.length > 0 ? (
-        <div className="rounded-3xl border border-border/70 bg-background/70 p-2 dark:border-white/8 dark:bg-white/3">
-          <div className="grid gap-1.5">
-            {filteredIssuers.map((issuer) => {
-              const aliasHint = issuer.aliases[0]
-
-              return (
-                <button
-                  key={issuer.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onSelectIssuer(issuer)}
-                  className={cn(
-                    "rounded-2xl border px-3 py-2 text-left transition-colors",
-                    selectedIssuerId === issuer.id
-                      ? "border-foreground/15 bg-card"
-                      : "border-transparent hover:border-border/70 hover:bg-card/80"
-                  )}
-                >
-                  <p className="text-sm font-medium text-foreground">
-                    {issuer.displayName}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {aliasHint
-                      ? `${issuer.kind === "seeded" ? "Seeded issuer" : "Custom issuer"} · Alias: ${aliasHint}`
-                      : issuer.kind === "seeded"
-                        ? "Seeded issuer"
-                        : "Custom issuer"}
-                  </p>
-                </button>
-              )
-            })}
-          </div>
+      <Autocomplete>
+        <div className="relative">
+          <AutocompleteInput
+            value={value}
+            onChange={(event) => handleInputChange(event.target.value)}
+            onFocus={() => setIsOpen(true)}
+            onBlur={() => {
+              window.setTimeout(() => setIsOpen(false), 120)
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Search issuers or type a custom one"
+            disabled={disabled}
+            aria-expanded={isOpen}
+            aria-autocomplete="list"
+            role="combobox"
+            clearable
+            onClear={() => {
+              setActiveIndex(0)
+              setIsOpen(false)
+              onChange("")
+            }}
+            trailingIcon={
+              <ChevronsUpDown className="size-4" />
+            }
+          />
         </div>
-      ) : null}
 
-      {selectedIssuer ? (
-        <p className="text-xs text-muted-foreground">
-          Selected issuer: {selectedIssuer.displayName}
-        </p>
-      ) : willCreateCustomIssuer ? (
-        <p className="text-xs text-muted-foreground">
-          Create custom issuer: {value.trim()}
-        </p>
-      ) : null}
+        {isOpen ? (
+          <AutocompleteContent>
+            {optionCount > 0 ? (
+              <AutocompleteList>
+                {filteredIssuers.map((issuer, index) => {
+                  const isSelected = selectedIssuerId === issuer.id
+
+                  return (
+                    <AutocompleteItem
+                      key={issuer.id}
+                      active={index === activeIndex}
+                      selected={isSelected}
+                      disabled={disabled}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        onSelectIssuer(issuer)
+                        setIsOpen(false)
+                      }}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {issuer.displayName}
+                        </p>
+                      </div>
+                      <Check
+                        className={cn(
+                          "mt-0.5 size-4 shrink-0 text-primary transition-opacity",
+                          isSelected ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    </AutocompleteItem>
+                  )
+                })}
+
+                {willCreateCustomIssuer ? (
+                  <AutocompleteItem
+                    active={activeIndex === filteredIssuers.length}
+                    onMouseEnter={() => setActiveIndex(filteredIssuers.length)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      onSelectCustomIssuer(value.trim())
+                      setIsOpen(false)
+                    }}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          Add custom issuer: &quot;{value.trim()}&quot;
+                        </p>
+                      </div>
+                    <Plus className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  </AutocompleteItem>
+                ) : null}
+              </AutocompleteList>
+            ) : (
+              <AutocompleteEmpty>No issuers found.</AutocompleteEmpty>
+            )}
+          </AutocompleteContent>
+        ) : null}
+      </Autocomplete>
     </div>
   )
 }

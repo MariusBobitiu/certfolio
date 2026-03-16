@@ -3,8 +3,7 @@ import { desc, eq, or } from "drizzle-orm"
 
 import { getCurrentSession } from "@/lib/auth/session"
 import { CredentialsTable, IssuersTable, db } from "@/lib/db/drizzle"
-
-import { CredentialsWorkspace } from "./credentials-workspace"
+import { CredentialsWorkspace } from "@/components/credentials/credentials-workspace"
 
 export const metadata: Metadata = {
   title: "Credentials - Certfolio",

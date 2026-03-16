@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Plus } from "lucide-react"
 import { useAction } from "next-safe-action/hooks"
 import { toast } from "sonner"
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog"
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -32,8 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-
-import { createCredentialAction } from "./action"
+import { createCredentialAction } from "@/app/(main)/credentials/action"
 
 type CredentialRecord = {
   id: string
@@ -61,10 +59,12 @@ type CreateDraftState = {
   title: string
   issuerQuery: string
   issuerId: string
-  sourceType: "credly" | "issuer_link" | "manual"
-  issuedOn: string
+  issuedMonth: string
+  issuedYear: string
+  expiresMonth: string
+  expiresYear: string
   verificationUrl: string
-  credentialCode: string
+  verificationCode: string
   summary: string
 }
 
@@ -73,6 +73,7 @@ type ActionValidationErrors = {
   customIssuerName?: { _errors?: string[] }
   verificationUrl?: { _errors?: string[] }
   issuedOn?: { _errors?: string[] }
+  expiresOn?: { _errors?: string[] }
 }
 
 const foundationSignals = [
@@ -85,12 +86,39 @@ const emptyDraft: CreateDraftState = {
   title: "",
   issuerQuery: "",
   issuerId: "",
-  sourceType: "manual",
-  issuedOn: "",
+  issuedMonth: "",
+  issuedYear: "",
+  expiresMonth: "",
+  expiresYear: "",
   verificationUrl: "",
-  credentialCode: "",
+  verificationCode: "",
   summary: "",
 }
+
+const issueMonthOptions = [
+  { value: "01", label: "January" },
+  { value: "02", label: "February" },
+  { value: "03", label: "March" },
+  { value: "04", label: "April" },
+  { value: "05", label: "May" },
+  { value: "06", label: "June" },
+  { value: "07", label: "July" },
+  { value: "08", label: "August" },
+  { value: "09", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+] as const
+
+const issueYearOptions = Array.from({ length: 61 }, (_, index) => {
+  const year = new Date().getFullYear() - index
+  return String(year)
+})
+
+const expiryYearOptions = Array.from({ length: 61 }, (_, index) => {
+  const year = new Date().getFullYear() + 10 - index
+  return String(year)
+})
 
 export function CredentialsWorkspace({
   initialCredentials,
@@ -170,46 +198,6 @@ export function CredentialsWorkspace({
           ? "Credentials that are ready to represent your professional identity more directly."
           : "Credentials kept on record without staying in the active collection."
 
-  const sourceTypeDescription =
-    draft.sourceType === "credly"
-      ? "Credly links are treated as externally verified entries."
-      : draft.sourceType === "issuer_link"
-        ? "Issuer links are treated as externally linked entries."
-        : "Manual entries are kept distinct as self-declared credentials."
-
-  const sourceTypeOptions = [
-    {
-      value: "manual",
-      label: "Manual",
-    },
-    {
-      value: "issuer_link",
-      label: "Issuer link",
-    },
-    {
-      value: "credly",
-      label: "Credly",
-    },
-  ] as const
-
-  const selectedIssuer = useMemo(
-    () =>
-      draft.issuerId
-        ? availableIssuers.find((issuer) => issuer.id === draft.issuerId) ?? null
-        : null,
-    [availableIssuers, draft.issuerId]
-  )
-
-  const previewIssuer = selectedIssuer ?? {
-    id: "preview-custom",
-    displayName: draft.issuerQuery.trim() || "Custom issuer",
-    normalizedName: "",
-    aliases: [],
-    kind: "custom" as const,
-    themeKey: "",
-    logoUrl: "",
-  }
-
   const handleDialogOpenChange = (open: boolean) => {
     if (!open) {
       setDraft(emptyDraft)
@@ -258,10 +246,18 @@ export function CredentialsWorkspace({
       title: draft.title,
       issuerId: draft.issuerId,
       customIssuerName: draft.issuerId ? "" : draft.issuerQuery,
-      sourceType: draft.sourceType,
-      issuedOn: draft.issuedOn,
+      issuedOn:
+        draft.issuedYear && draft.issuedMonth
+          ? `${draft.issuedYear}-${draft.issuedMonth}`
+          : "",
+      expiresOn:
+        draft.expiresYear && draft.expiresMonth
+          ? `${draft.expiresYear}-${draft.expiresMonth}`
+          : draft.expiresYear || draft.expiresMonth
+            ? "__partial__"
+            : "",
       verificationUrl: draft.verificationUrl,
-      credentialCode: draft.credentialCode,
+      verificationCode: draft.verificationCode,
       summary: draft.summary,
     })
   }
@@ -398,7 +394,7 @@ export function CredentialsWorkspace({
           </div>
 
           {filteredCredentials.length > 0 ? (
-            <div className="mt-6 grid gap-4 xl:grid-cols-2">
+            <div className="mt-6 grid gap-4 xl:grid-cols-3">
               {filteredCredentials.map((credential) => (
                 <CredentialCardPreview
                   key={credential.id}
@@ -418,8 +414,8 @@ export function CredentialsWorkspace({
                 No credentials in this view yet.
               </h3>
               <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                Start with a credential title, issuer, and issue month. Richer
-                editing and uploaded certificate support land in the next phase.
+                Add the core facts first, then come back for richer editing in
+                the next phase.
               </p>
               <Button
                 className="mt-6 rounded-full"
@@ -434,12 +430,12 @@ export function CredentialsWorkspace({
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Create credential</DialogTitle>
             <DialogDescription>
-              Start with the credential facts that affect list rendering and issuer
-              identity. Detail editing and uploads come in the next phase.
+              Add the essentials now. You can refine the rest on the detail view
+              in the next phase.
             </DialogDescription>
           </DialogHeader>
 
@@ -475,12 +471,15 @@ export function CredentialsWorkspace({
                       issuerId: issuer.id,
                     }))
                   }
+                  onSelectCustomIssuer={(value) =>
+                    setDraft((current) => ({
+                      ...current,
+                      issuerQuery: value,
+                      issuerId: "",
+                    }))
+                  }
                   disabled={isPending}
                 />
-                <FieldDescription>
-                  Search seeded issuers first. If there is no match, a custom
-                  issuer will be created automatically.
-                </FieldDescription>
                 <FieldError
                   errors={[
                     { message: validationErrors.customIssuerName?._errors?.[0] },
@@ -489,85 +488,131 @@ export function CredentialsWorkspace({
               </Field>
 
               <div className="grid gap-6 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="credential-source-type">Source type</FieldLabel>
-                  <Select
-                    value={draft.sourceType}
-                    onValueChange={(value) =>
-                      handleDraftChange(
-                        "sourceType",
-                        value as CreateDraftState["sourceType"]
-                      )
-                    }
-                    disabled={isPending}
-                  >
-                    <SelectTrigger id="credential-source-type" className="w-full">
-                      <SelectValue placeholder="Select source type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sourceTypeOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="uploaded_certificate" disabled>
-                        Uploaded certificate (detail phase)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>{sourceTypeDescription}</FieldDescription>
-                </Field>
-
                 <Field data-invalid={Boolean(validationErrors.issuedOn?._errors?.[0])}>
-                  <FieldLabel htmlFor="issued-on">Issue month</FieldLabel>
-                  <Input
-                    id="issued-on"
-                    type="month"
-                    value={draft.issuedOn}
-                    onChange={(event) =>
-                      handleDraftChange("issuedOn", event.target.value)
-                    }
-                    disabled={isPending}
-                  />
+                  <FieldLabel>Issue date</FieldLabel>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Select
+                      value={draft.issuedMonth}
+                      onValueChange={(value) =>
+                        handleDraftChange("issuedMonth", value)
+                      }
+                      disabled={isPending}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {issueMonthOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={draft.issuedYear}
+                      onValueChange={(value) =>
+                        handleDraftChange("issuedYear", value)
+                      }
+                      disabled={isPending}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {issueYearOptions.map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <FieldError
                     errors={[{ message: validationErrors.issuedOn?._errors?.[0] }]}
                   />
                 </Field>
-              </div>
 
-              {(draft.sourceType === "credly" ||
-                draft.sourceType === "issuer_link") && (
                 <Field
-                  data-invalid={Boolean(
-                    validationErrors.verificationUrl?._errors?.[0]
-                  )}
+                  data-invalid={Boolean(validationErrors.expiresOn?._errors?.[0])}
                 >
-                  <FieldLabel htmlFor="verification-url">Verification URL</FieldLabel>
-                  <Input
-                    id="verification-url"
-                    type="url"
-                    value={draft.verificationUrl}
-                    onChange={(event) =>
-                      handleDraftChange("verificationUrl", event.target.value)
-                    }
-                    placeholder="https://..."
-                    disabled={isPending}
-                  />
+                  <FieldLabel>Expiry date</FieldLabel>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Select
+                      value={draft.expiresMonth}
+                      onValueChange={(value) =>
+                        handleDraftChange("expiresMonth", value)
+                      }
+                      disabled={isPending}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {issueMonthOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={draft.expiresYear}
+                      onValueChange={(value) =>
+                        handleDraftChange("expiresYear", value)
+                      }
+                      disabled={isPending}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expiryYearOptions.map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <FieldError
-                    errors={[
-                      { message: validationErrors.verificationUrl?._errors?.[0] },
-                    ]}
+                    errors={[{ message: validationErrors.expiresOn?._errors?.[0] }]}
                   />
                 </Field>
-              )}
+              </div>
+
+              <Field
+                data-invalid={Boolean(
+                  validationErrors.verificationUrl?._errors?.[0]
+                )}
+              >
+                <FieldLabel htmlFor="verification-url">Verification link</FieldLabel>
+                <Input
+                  id="verification-url"
+                  type="url"
+                  value={draft.verificationUrl}
+                  onChange={(event) =>
+                    handleDraftChange("verificationUrl", event.target.value)
+                  }
+                  placeholder="https://..."
+                  disabled={isPending}
+                />
+                <FieldError
+                  errors={[
+                    { message: validationErrors.verificationUrl?._errors?.[0] },
+                  ]}
+                />
+              </Field>
 
               <Field>
-                <FieldLabel htmlFor="credential-code">Credential code</FieldLabel>
+                <FieldLabel htmlFor="verification-code">Verification code</FieldLabel>
                 <Input
-                  id="credential-code"
-                  value={draft.credentialCode}
+                  id="verification-code"
+                  value={draft.verificationCode}
                   onChange={(event) =>
-                    handleDraftChange("credentialCode", event.target.value)
+                    handleDraftChange("verificationCode", event.target.value)
                   }
                   placeholder="Optional"
                   disabled={isPending}
@@ -589,31 +634,6 @@ export function CredentialsWorkspace({
             </FieldGroup>
 
             <FieldError errors={submitError ? [{ message: submitError }] : []} />
-
-            <div className="space-y-3 rounded-3xl border border-border/70 bg-background/70 p-4 dark:border-white/8 dark:bg-white/3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Card preview
-              </p>
-              <CredentialCardPreview
-                issuerDisplayName={previewIssuer.displayName}
-                issuerThemeKey={previewIssuer.themeKey}
-                title={draft.title.trim() || "Credential title"}
-                issuedOn={
-                  draft.issuedOn
-                    ? `${draft.issuedOn}-01T00:00:00.000Z`
-                    : new Date().toISOString()
-                }
-                sourceType={draft.sourceType}
-                status="draft"
-                verificationStatus={
-                  draft.sourceType === "credly"
-                    ? "verified_external"
-                    : draft.sourceType === "issuer_link"
-                      ? "linked_external"
-                      : "self_declared"
-                }
-              />
-            </div>
 
             <DialogFooter>
               <Button type="submit" disabled={isPending}>

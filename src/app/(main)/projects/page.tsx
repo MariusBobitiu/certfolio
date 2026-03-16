@@ -5,7 +5,7 @@ import { getCurrentSession } from '@/lib/auth/session'
 import { db, ProjectEvidenceLinksTable, ProjectsTable } from '@/lib/db/drizzle'
 import { getProjectAssetUrl } from '@/lib/storage/r2'
 
-import { ProjectsWorkspace } from './projects-workspace'
+import { ProjectsWorkspace } from '../../../components/projects/projects-workspace'
 
 export const metadata: Metadata = {
 	title: 'Projects - Certfolio',

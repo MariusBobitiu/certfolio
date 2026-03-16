@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { createProjectAction } from "./action"
+import { createProjectAction } from "../../app/(main)/projects/action"
 
 const editorialPrompts = [
   "What problem did this project solve?",

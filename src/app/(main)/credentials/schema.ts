@@ -1,18 +1,16 @@
 import * as z from "zod/v4"
 
-const createSourceTypeSchema = z.enum(["credly", "issuer_link", "manual"])
-
 export const createCredentialSchema = z
   .object({
     title: z.string().trim().min(1, "Credential title is required"),
     issuerId: z.string().trim().optional().default(""),
     customIssuerName: z.string().trim().optional().default(""),
-    sourceType: createSourceTypeSchema,
     issuedOn: z
       .string()
-      .regex(/^\d{4}-\d{2}$/, "Issue month is required"),
+      .regex(/^\d{4}-\d{2}$/, "Issue date is required"),
+    expiresOn: z.string().trim().optional().default(""),
     verificationUrl: z.string().trim().optional().default(""),
-    credentialCode: z.string().trim().optional().default(""),
+    verificationCode: z.string().trim().optional().default(""),
     summary: z.string().trim().optional().default(""),
   })
   .superRefine((value, ctx) => {
@@ -24,18 +22,6 @@ export const createCredentialSchema = z
       })
     }
 
-    if (
-      (value.sourceType === "credly" || value.sourceType === "issuer_link") &&
-      !value.verificationUrl.trim()
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["verificationUrl"],
-        message: "Verification URL is required for external links",
-      })
-      return
-    }
-
     if (value.verificationUrl.trim()) {
       const result = z.url().safeParse(value.verificationUrl.trim())
       if (!result.success) {
@@ -45,6 +31,22 @@ export const createCredentialSchema = z
           message: "Enter a valid verification URL",
         })
       }
+    }
+
+    if (value.expiresOn.trim() && !/^\d{4}-\d{2}$/.test(value.expiresOn.trim())) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["expiresOn"],
+        message: "Expiry date must include a month and year",
+      })
+    }
+
+    if (value.expiresOn.trim() && value.expiresOn < value.issuedOn) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["expiresOn"],
+        message: "Expiry date must be after the issue date",
+      })
     }
   })
 

@@ -25,16 +25,42 @@ function slugify(value: string) {
     .replace(/-{2,}/g, "-")
 }
 
-function deriveVerificationStatus(sourceType: "credly" | "issuer_link" | "manual") {
-  if (sourceType === "credly") {
-    return "verified_external" as const
+function deriveCredentialSource(verificationUrl: string) {
+  const trimmedUrl = verificationUrl.trim()
+
+  if (!trimmedUrl) {
+    return {
+      sourceType: "manual" as const,
+      verificationStatus: "self_declared" as const,
+    }
   }
 
-  if (sourceType === "issuer_link") {
-    return "linked_external" as const
+  try {
+    const hostname = new URL(trimmedUrl).hostname.toLowerCase()
+    const normalizedHostname = hostname.startsWith("www.")
+      ? hostname.slice(4)
+      : hostname
+
+    if (
+      normalizedHostname === "credly.com" ||
+      normalizedHostname.endsWith(".credly.com")
+    ) {
+      return {
+        sourceType: "credly" as const,
+        verificationStatus: "verified_external" as const,
+      }
+    }
+  } catch {
+    return {
+      sourceType: "manual" as const,
+      verificationStatus: "self_declared" as const,
+    }
   }
 
-  return "self_declared" as const
+  return {
+    sourceType: "issuer_link" as const,
+    verificationStatus: "linked_external" as const,
+  }
 }
 
 function parseIssuedMonth(value: string) {
@@ -192,7 +218,9 @@ export const createCredentialAction = actionClient
         parsedInput.title
       )
 
-      const verificationStatus = deriveVerificationStatus(parsedInput.sourceType)
+      const { sourceType, verificationStatus } = deriveCredentialSource(
+        parsedInput.verificationUrl
+      )
 
       const [credential] = await db
         .insert(CredentialsTable)
@@ -201,13 +229,15 @@ export const createCredentialAction = actionClient
           issuer_id: issuer.id,
           slug,
           title: parsedInput.title.trim(),
-          source_type: parsedInput.sourceType,
+          source_type: sourceType,
           verification_status: verificationStatus,
-          credential_code: parsedInput.credentialCode.trim(),
+          credential_code: parsedInput.verificationCode.trim(),
           verification_url: parsedInput.verificationUrl.trim(),
           certificate_asset_key: "",
           issued_on: parseIssuedMonth(parsedInput.issuedOn),
-          expires_on: null,
+          expires_on: parsedInput.expiresOn
+            ? parseIssuedMonth(parsedInput.expiresOn)
+            : null,
           summary: parsedInput.summary.trim(),
           status: "draft",
           updated_at: new Date(),
