@@ -57,7 +57,7 @@ export type CreateCredentialInput = z.input<typeof createCredentialSchema>
 
 export const updateCredentialSchema = credentialBaseSchema.safeExtend({
   slug: z.string().trim().min(1, "Credential slug is required"),
-  status: z.enum(["draft", "published", "archived"]),
+  status: z.enum(["draft", "published"]),
 })
 
 export type UpdateCredentialInput = z.input<typeof updateCredentialSchema>

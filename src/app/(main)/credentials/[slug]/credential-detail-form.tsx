@@ -53,7 +53,8 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
-type CredentialStatus = "draft" | "published" | "archived"
+type CredentialStatus = "draft" | "published"
+type PersistedCredentialStatus = CredentialStatus | "archived"
 type CredentialSourceType =
   | "credly"
   | "issuer_link"
@@ -90,7 +91,7 @@ type CredentialDetailFormProps = {
     certificateAssetKey: string
     certificateAssetUrl: string | null
     summary: string
-    status: CredentialStatus
+    status: PersistedCredentialStatus
     issuer: IssuerAutocompleteOption & {
       themeKey: string
       logoUrl: string
@@ -235,7 +236,8 @@ export function CredentialDetailForm({
         verificationCode: data.credential.verificationCode,
         certificateAssetKey: data.credential.certificateAssetKey,
         summary: data.credential.summary,
-        status: data.credential.status,
+        status:
+          data.credential.status === "published" ? "published" : "draft",
         sourceType: data.credential.sourceType,
         verificationStatus: data.credential.verificationStatus,
         issuer: {

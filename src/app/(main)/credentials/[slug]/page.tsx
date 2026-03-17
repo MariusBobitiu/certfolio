@@ -55,6 +55,10 @@ export default async function CredentialDetailPage({
     notFound()
   }
 
+  if (credential.status === "archived") {
+    redirect("/credentials")
+  }
+
   const availableIssuers = await db
     .select({
       id: IssuersTable.id,

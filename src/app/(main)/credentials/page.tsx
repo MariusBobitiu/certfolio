@@ -1,5 +1,5 @@
 import { Metadata } from "next"
-import { desc, eq, or } from "drizzle-orm"
+import { and, desc, eq, ne, or } from "drizzle-orm"
 
 import { getCurrentSession } from "@/lib/auth/session"
 import { CredentialsTable, IssuersTable, db } from "@/lib/db/drizzle"
@@ -40,7 +40,12 @@ export default async function CredentialsPage() {
         })
         .from(CredentialsTable)
         .innerJoin(IssuersTable, eq(CredentialsTable.issuer_id, IssuersTable.id))
-        .where(eq(CredentialsTable.user_id, session.user.id))
+        .where(
+          and(
+            eq(CredentialsTable.user_id, session.user.id),
+            ne(CredentialsTable.status, "archived")
+          )
+        )
         .orderBy(desc(CredentialsTable.issued_on), desc(CredentialsTable.created_at))
     : []
 
