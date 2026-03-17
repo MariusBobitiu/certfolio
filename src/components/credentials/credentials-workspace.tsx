@@ -430,7 +430,7 @@ export function CredentialsWorkspace({
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-3xl sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create credential</DialogTitle>
             <DialogDescription>
@@ -487,7 +487,7 @@ export function CredentialsWorkspace({
                 />
               </Field>
 
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-12 sm:grid-cols-2">
                 <Field data-invalid={Boolean(validationErrors.issuedOn?._errors?.[0])}>
                   <FieldLabel>Issue date</FieldLabel>
                   <div className="grid gap-3 sm:grid-cols-2">

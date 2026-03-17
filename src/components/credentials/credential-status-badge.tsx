@@ -18,7 +18,7 @@ export function CredentialStatusBadge({
   return (
     <div
       className={cn(
-        "rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+        "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]",
         toneMap[status],
         className
       )}

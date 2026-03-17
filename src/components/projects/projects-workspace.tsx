@@ -507,7 +507,7 @@ export function ProjectsWorkspace({ initialProjects }: ProjectsWorkspaceProps) {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-0 sm:max-w-2xl">
+        <DialogContent className="overflow-y-auto rounded-3xl p-0 sm:max-w-2xl">
           <form onSubmit={handleSubmit}>
             <DialogHeader className="border-b border-border/60 px-6 pt-6 pb-5 sm:px-7">
               <DialogTitle className="text-2xl font-semibold tracking-[-0.03em]">

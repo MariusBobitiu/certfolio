@@ -1,12 +1,14 @@
 import "server-only"
 
-import { createHash, randomBytes } from "node:crypto"
-import { and, eq, gt, isNull } from "drizzle-orm"
+import { createHash, createHmac, randomBytes } from "node:crypto"
+import { and, eq, gt, isNull, sql } from "drizzle-orm"
+import { cookies } from "next/headers"
 import { Resend } from "resend"
 
+import { RATE_LIMIT_CONFIG } from "@/lib/consts"
 import { db, VerificationsTable } from "@/lib/db/drizzle"
 
-const PASSWORD_RESET_TTL_MS = 1000 * 60 * 60 // 1 hour
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 type SendPasswordResetParams = {
   userId: string
@@ -14,24 +16,37 @@ type SendPasswordResetParams = {
   name: string
 }
 
-function hashResetToken(token: string) {
-  return createHash("sha256").update(token).digest("hex")
+type PendingPasswordResetState = {
+  userId: string
+  createdAt: number
+  signature: string
 }
 
-function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3000"
+function hashResetCode(code: string) {
+  return createHash("sha256").update(code).digest("hex")
 }
 
-function buildResetUrl(token: string) {
-  const url = new URL("/reset-password", getBaseUrl())
-  url.searchParams.set("token", token)
+function generateResetCode(): string {
+  const { CODE_LENGTH } = RATE_LIMIT_CONFIG.FORGOT_PASSWORD
+  const alphabetLength = CODE_ALPHABET.length
+  const bytes = randomBytes(CODE_LENGTH * 4)
+  let code = ""
 
-  return url.toString()
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    const value = bytes.readUInt32BE(i * 4)
+    code += CODE_ALPHABET[value % alphabetLength]
+  }
+
+  return code
+}
+
+function formatCode(code: string): string {
+  return `${code.slice(0, 4)}-${code.slice(4)}`
 }
 
 async function createResetRecord(userId: string, email: string) {
-  const token = randomBytes(32).toString("base64url")
-  const tokenHash = hashResetToken(token)
+  const code = generateResetCode()
+  const codeHash = hashResetCode(code)
   const now = new Date()
 
   await db.transaction(async (tx) => {
@@ -52,13 +67,13 @@ async function createResetRecord(userId: string, email: string) {
       purpose: "password_reset",
       method: "email",
       target: email,
-      token_hash: tokenHash,
-      expires_at: new Date(now.getTime() + PASSWORD_RESET_TTL_MS),
+      token_hash: codeHash,
+      expires_at: new Date(now.getTime() + RATE_LIMIT_CONFIG.FORGOT_PASSWORD.CODE_TTL_MS),
       metadata: {},
     })
   })
 
-  return token
+  return code
 }
 
 export async function logPasswordResetEvent(
@@ -85,8 +100,8 @@ export async function logPasswordResetEvent(
 }
 
 export async function sendPasswordResetEmail(params: SendPasswordResetParams) {
-  const token = await createResetRecord(params.userId, params.email)
-  const resetUrl = buildResetUrl(token)
+  const code = await createResetRecord(params.userId, params.email)
+  const formattedCode = formatCode(code)
 
   const apiKey = process.env.RESEND_API_KEY
 
@@ -109,16 +124,15 @@ export async function sendPasswordResetEmail(params: SendPasswordResetParams) {
     html: `
       <div style="font-family: sans-serif; line-height: 1.5; color: #111827;">
         <h2 style="margin-bottom: 8px;">Password reset request</h2>
-        <p style="margin: 0 0 16px;">We received a request to reset your password for your Certfolio account. Click the link below to create a new password.</p>
-        <p style="margin: 0 0 20px;">
-          <a href="${resetUrl}" style="background: #0f172a; color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 8px; display: inline-block;">Reset password</a>
-        </p>
-        <p style="margin: 0 0 8px; font-size: 14px; color: #4b5563;">If the button does not work, copy and paste this link in your browser:</p>
-        <p style="margin: 0; font-size: 14px;"><a href="${resetUrl}">${resetUrl}</a></p>
+        <p style="margin: 0 0 16px;">We received a request to reset your password for your Certfolio account. Enter the code below to create a new password.</p>
+        <div style="margin: 0 0 20px; padding: 16px 24px; background: #f1f5f9; border-radius: 8px; display: inline-block;">
+          <span style="font-size: 32px; font-weight: 700; letter-spacing: 4px; font-family: monospace; color: #0f172a;">${formattedCode}</span>
+        </div>
+        <p style="margin: 0 0 8px; font-size: 14px; color: #4b5563;">This code expires in 15 minutes.</p>
         <p style="margin-top: 16px; font-size: 12px; color: #6b7280;">If you didn't request this email, you can safely ignore it.</p>
       </div>
     `,
-    text: `We received a request to reset your password. Open this link to create a new password: ${resetUrl}`,
+    text: `We received a request to reset your password. Your reset code is: ${formattedCode}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this email, you can safely ignore it.`,
   })
 
   if (error) {
@@ -126,17 +140,18 @@ export async function sendPasswordResetEmail(params: SendPasswordResetParams) {
   }
 }
 
-export async function validatePasswordResetToken(token: string) {
-  const tokenHash = hashResetToken(token)
+export async function validatePasswordResetCode(userId: string, code: string) {
+  const normalizedCode = code.replace(/-/g, "")
+  const codeHash = hashResetCode(normalizedCode)
 
   const [verification] = await db
     .select()
     .from(VerificationsTable)
     .where(
       and(
+        eq(VerificationsTable.user_id, userId),
         eq(VerificationsTable.purpose, "password_reset"),
         eq(VerificationsTable.method, "email"),
-        eq(VerificationsTable.token_hash, tokenHash),
         isNull(VerificationsTable.consumed_at),
         gt(VerificationsTable.expires_at, new Date())
       )
@@ -144,7 +159,20 @@ export async function validatePasswordResetToken(token: string) {
     .limit(1)
 
   if (!verification) {
-    return { success: false as const }
+    return { success: false as const, reason: "expired" as const }
+  }
+
+  if (verification.attempts >= RATE_LIMIT_CONFIG.FORGOT_PASSWORD.MAX_CODE_ATTEMPTS) {
+    return { success: false as const, reason: "too_many_attempts" as const }
+  }
+
+  if (verification.token_hash !== codeHash) {
+    await db
+      .update(VerificationsTable)
+      .set({ attempts: sql`${VerificationsTable.attempts} + 1` })
+      .where(eq(VerificationsTable.id, verification.id))
+
+    return { success: false as const, reason: "invalid_code" as const }
   }
 
   return {
@@ -159,4 +187,113 @@ export async function consumePasswordResetToken(verificationId: string) {
     .update(VerificationsTable)
     .set({ consumed_at: new Date() })
     .where(eq(VerificationsTable.id, verificationId))
+}
+
+// ---------------------------------------------------------------------------
+// Pending cookie helpers
+// ---------------------------------------------------------------------------
+
+function getPasswordResetCookieKey() {
+  const rawKey =
+    process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY ??
+    process.env.MFA_TOTP_ENCRYPTION_KEY
+
+  if (!rawKey) {
+    throw new Error(
+      "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is required for password reset cookies."
+    )
+  }
+
+  return rawKey
+}
+
+function signPendingPasswordResetValue(userId: string, createdAt: number) {
+  return createHmac("sha256", getPasswordResetCookieKey())
+    .update(`${userId}:${createdAt}`)
+    .digest("base64url")
+}
+
+function encodePendingPasswordResetCookie(userId: string, createdAt: number) {
+  return Buffer.from(
+    JSON.stringify({
+      userId,
+      createdAt,
+      signature: signPendingPasswordResetValue(userId, createdAt),
+    } satisfies PendingPasswordResetState)
+  ).toString("base64url")
+}
+
+function decodePendingPasswordResetCookie(value: string) {
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8")
+    ) as Partial<PendingPasswordResetState>
+
+    if (
+      typeof parsed.userId !== "string" ||
+      typeof parsed.createdAt !== "number" ||
+      typeof parsed.signature !== "string"
+    ) {
+      return null
+    }
+
+    return parsed as PendingPasswordResetState
+  } catch {
+    return null
+  }
+}
+
+export async function setPasswordResetPendingCookie(userId: string): Promise<void> {
+  const cookieStore = await cookies()
+  const createdAt = Date.now()
+
+  cookieStore.set(
+    RATE_LIMIT_CONFIG.FORGOT_PASSWORD.PENDING_COOKIE_NAME,
+    encodePendingPasswordResetCookie(userId, createdAt),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(RATE_LIMIT_CONFIG.FORGOT_PASSWORD.PENDING_TTL_MS / 1000),
+    }
+  )
+}
+
+export async function getPasswordResetPendingCookie(): Promise<{ userId: string } | null> {
+  const cookieStore = await cookies()
+  const cookie = cookieStore.get(RATE_LIMIT_CONFIG.FORGOT_PASSWORD.PENDING_COOKIE_NAME)
+
+  if (!cookie?.value) {
+    return null
+  }
+
+  const parsed = decodePendingPasswordResetCookie(cookie.value)
+
+  if (!parsed) {
+    return null
+  }
+
+  const expectedSignature = signPendingPasswordResetValue(parsed.userId, parsed.createdAt)
+
+  if (
+    expectedSignature !== parsed.signature ||
+    Date.now() - parsed.createdAt > RATE_LIMIT_CONFIG.FORGOT_PASSWORD.PENDING_TTL_MS
+  ) {
+    return null
+  }
+
+  return { userId: parsed.userId }
+}
+
+export async function clearPasswordResetPendingCookie(): Promise<void> {
+  const cookieStore = await cookies()
+
+  cookieStore.set(RATE_LIMIT_CONFIG.FORGOT_PASSWORD.PENDING_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(0),
+  })
 }

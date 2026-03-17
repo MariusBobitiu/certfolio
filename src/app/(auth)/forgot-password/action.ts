@@ -7,12 +7,16 @@ import { consumeRateLimit } from "@/lib/auth/rate-limit"
 import { actionClient } from "@/lib/safe-action"
 import { getRequestSessionContext } from "@/lib/auth/session"
 import {
+  clearPasswordResetPendingCookie,
+  consumePasswordResetToken,
   logPasswordResetEvent,
   sendPasswordResetEmail,
+  setPasswordResetPendingCookie,
+  validatePasswordResetCode,
 } from "@/lib/auth/password-reset"
 import { db, UsersTable } from "@/lib/db/drizzle"
 
-import { forgotPasswordSchema } from "./schema"
+import { forgotPasswordSchema, verifyForgotPasswordCodeSchema } from "./schema"
 
 export const forgotPasswordAction = actionClient
   .inputSchema(forgotPasswordSchema)
@@ -58,9 +62,10 @@ export const forgotPasswordAction = actionClient
 
     if (!user) {
       // For security, we don't reveal whether email exists
+      await clearPasswordResetPendingCookie()
       return {
         success:
-          "If an account exists with this email, we will send you a password reset link.",
+          "If an account is registered using that email address, you should receive a code.",
       }
     }
 
@@ -74,6 +79,7 @@ export const forgotPasswordAction = actionClient
         ipAddress,
         userAgent,
       })
+      await clearPasswordResetPendingCookie()
     } catch (error) {
       console.error("Failed to send password reset email:", error)
       return {
@@ -83,6 +89,41 @@ export const forgotPasswordAction = actionClient
 
     return {
       success:
-        "If an account exists with this email, we will send you a password reset link.",
+        "If an account is registered using that email address, you should receive a code.",
+    }
+  })
+
+export const verifyForgotPasswordCodeAction = actionClient
+  .inputSchema(verifyForgotPasswordCodeSchema)
+  .action(async ({ parsedInput }) => {
+    const normalizedEmail = parsedInput.email.toLowerCase().trim()
+    const normalizedCode = parsedInput.code.replace(/-/g, "")
+
+    const [user] = await db
+      .select()
+      .from(UsersTable)
+      .where(eq(UsersTable.email, normalizedEmail))
+      .limit(1)
+
+    if (!user) {
+      return {
+        failure: "The code you entered is incorrect or has expired.",
+      }
+    }
+
+    const result = await validatePasswordResetCode(user.id, normalizedCode)
+
+    if (!result.success) {
+      return {
+        failure: "The code you entered is incorrect or has expired.",
+      }
+    }
+
+    await consumePasswordResetToken(result.verificationId)
+    await setPasswordResetPendingCookie(result.userId)
+
+    return {
+      success: true as const,
+      redirectTo: "/reset-password",
     }
   })

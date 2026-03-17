@@ -11,36 +11,31 @@ import {
   SessionsTable,
   TrustedMfaDevicesTable,
   UsersTable,
-  VerificationsTable,
 } from "@/lib/db/drizzle"
 
 import { resetPasswordSchema } from "./schema"
 import {
+  clearPasswordResetPendingCookie,
+  getPasswordResetPendingCookie,
   logPasswordResetEvent,
-  validatePasswordResetToken,
 } from "@/lib/auth/password-reset"
 
-const resetPasswordWithTokenSchema = z.object({
-  token: z.string().min(1, "Reset token is required"),
-  ...resetPasswordSchema.shape,
-})
-
 export const resetPasswordAction = actionClient
-  .inputSchema(resetPasswordWithTokenSchema)
+  .inputSchema(resetPasswordSchema)
   .action(async ({ parsedInput }) => {
-    const { password, token } = parsedInput
+    const { password } = parsedInput
     const { ipAddress, userAgent } = await getRequestSessionContext()
 
-    const result = await validatePasswordResetToken(token)
+    const pending = await getPasswordResetPendingCookie()
 
-    if (!result.success) {
-      return { failure: "Your password reset link has expired or is invalid." }
+    if (!pending) {
+      return { failure: "Your password reset session has expired. Please request a new code." }
     }
 
     const [user] = await db
       .select()
       .from(UsersTable)
-      .where(eq(UsersTable.id, result.userId))
+      .where(eq(UsersTable.id, pending.userId))
       .limit(1)
 
     if (!user) {
@@ -59,14 +54,14 @@ export const resetPasswordAction = actionClient
       await tx
         .update(UsersTable)
         .set({ password_hash: passwordHash, updated_at: new Date() })
-        .where(eq(UsersTable.id, result.userId))
+        .where(eq(UsersTable.id, pending.userId))
 
       await tx
         .update(TrustedMfaDevicesTable)
         .set({ revoked_at: new Date(), updated_at: new Date() })
         .where(
           and(
-            eq(TrustedMfaDevicesTable.user_id, result.userId),
+            eq(TrustedMfaDevicesTable.user_id, pending.userId),
             isNull(TrustedMfaDevicesTable.revoked_at)
           )
         )
@@ -76,16 +71,11 @@ export const resetPasswordAction = actionClient
         .set({ revoked_at: new Date() })
         .where(
           and(
-            eq(SessionsTable.user_id, result.userId),
+            eq(SessionsTable.user_id, pending.userId),
             isNull(SessionsTable.revoked_at),
             gt(SessionsTable.expires_at, new Date())
           )
         )
-
-      await tx
-        .update(VerificationsTable)
-        .set({ consumed_at: new Date() })
-        .where(eq(VerificationsTable.id, result.verificationId))
     })
 
     await logPasswordResetEvent(user.id, user.email, "completed", {
@@ -94,4 +84,15 @@ export const resetPasswordAction = actionClient
     })
 
     return { success: true as const }
+  })
+
+export const finalizeResetPasswordAction = actionClient
+  .inputSchema(z.object({}))
+  .action(async () => {
+    await clearPasswordResetPendingCookie()
+
+    return {
+      success: true as const,
+      redirectTo: "/sign-in",
+    }
   })

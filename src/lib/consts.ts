@@ -47,6 +47,11 @@ export const RATE_LIMIT_CONFIG = {
     IP_MAX_ATTEMPTS: 10,
     ACCOUNT_MAX_ATTEMPTS: 5,
     WINDOW_MS: 1000 * 60 * 15,
+    CODE_LENGTH: 8,
+    CODE_TTL_MS: 1000 * 60 * 15,
+    MAX_CODE_ATTEMPTS: 5,
+    PENDING_COOKIE_NAME: "cfl_reset_pending",
+    PENDING_TTL_MS: 1000 * 60 * 15,
   },
   EMAIL_VERIFICATION: {
     PENDING_COOKIE_NAME: "cfl_verify_email",

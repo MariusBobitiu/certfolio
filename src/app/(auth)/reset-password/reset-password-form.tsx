@@ -1,13 +1,11 @@
 "use client"
 
-import Link from "next/link"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
 import { useAction } from "next-safe-action/hooks"
-import * as z from "zod/v4"
-
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -23,20 +21,21 @@ import {
   InputGroupText,
 } from "@/components/ui/input-group"
 
-import { resetPasswordAction } from "./action"
+import { finalizeResetPasswordAction, resetPasswordAction } from "./action"
 import { resetPasswordSchema, type ResetPasswordInput } from "./schema"
+
+type FormValues = ResetPasswordInput
 
 type ActionValidationErrors = {
   password?: { _errors?: string[] }
   confirmPassword?: { _errors?: string[] }
 }
 
-type ResetPasswordFormProps = {
-  token: string
-}
-
-export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
+export function ResetPasswordForm() {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [countdown, setCountdown] = useState(5)
 
   const {
     register,
@@ -44,18 +43,36 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     setError,
     clearErrors,
     formState: { errors },
-  } = useForm<ResetPasswordInput & { token: string }>({
-    resolver: standardSchemaResolver(
-      resetPasswordSchema.extend({ token: z.string() })
-    ),
+  } = useForm<FormValues>({
+    resolver: standardSchemaResolver(resetPasswordSchema),
     defaultValues: {
-      token,
       password: "",
       confirmPassword: "",
     },
   })
 
   const { execute, isPending, result } = useAction(resetPasswordAction)
+  const {
+    execute: executeFinalize,
+    isPending: isFinalizing,
+    result: finalizeResult,
+  } = useAction(finalizeResetPasswordAction)
+
+  useEffect(() => {
+    if (result.data?.success) {
+      const timeout = window.setTimeout(() => {
+        executeFinalize({})
+      }, 5000)
+
+      return () => window.clearTimeout(timeout)
+    }
+  }, [executeFinalize, result.data?.success])
+
+  useEffect(() => {
+    if (finalizeResult.data?.success) {
+      router.push("/sign-in")
+    }
+  }, [finalizeResult.data?.success, router])
 
   useEffect(() => {
     const validationErrors = result.validationErrors as
@@ -84,7 +101,17 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     }
   }, [result, setError])
 
-  const onSubmit = (values: ResetPasswordInput & { token: string }) => {
+  useEffect(() => {
+    if (result.data?.success) {
+      const interval = window.setInterval(() => {
+        setCountdown((prev) => prev - 1)
+      }, 1000)
+
+      return () => window.clearInterval(interval)
+    }
+  }, [result.data?.success])
+
+  const onSubmit = (values: FormValues) => {
     clearErrors("root")
     execute(values)
   }
@@ -93,11 +120,17 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     return (
       <div className="space-y-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Your password has been updated successfully.
+          Your password has been updated successfully. You will be redirected to the sign in page in {countdown} seconds.
         </p>
 
-        <Button asChild className="w-full">
-          <Link href="/sign-in">Sign in</Link>
+        <Button
+          type="button"
+          className="w-full"
+          disabled={isFinalizing}
+          onClick={() => executeFinalize({})}
+        >
+          {isFinalizing && <Loader2 className="size-4 animate-spin" />}
+          {isFinalizing ? "Redirecting..." : "Go to sign in"}
         </Button>
       </div>
     )
@@ -154,13 +187,30 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             </InputGroupAddon>
             <InputGroupInput
               id="confirmPassword"
-              type={showPassword ? "text" : "password"}
+              type={showConfirmPassword ? "text" : "password"}
               placeholder="Re-enter your password"
               autoComplete="new-password"
               disabled={isPending}
               aria-invalid={Boolean(errors.confirmPassword)}
               {...register("confirmPassword")}
             />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="ml-2"
+                tabIndex={-1}
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </InputGroupButton>
+            </InputGroupAddon>
           </InputGroup>
           <FieldError errors={[errors.confirmPassword]} />
         </Field>
@@ -175,13 +225,13 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 
       <p className="text-center text-sm text-muted-foreground">
         Remember your password?{" "}
-        <Link
-          href="/sign-in"
+        <button
+          type="button"
           className="font-medium text-foreground underline-offset-4 hover:underline"
-          tabIndex={2}
+          onClick={() => router.push("/sign-in")}
         >
           Sign in
-        </Link>
+        </button>
       </p>
     </form>
   )
