@@ -322,6 +322,7 @@ export const updateCredentialAction = actionClient
     const [existingCredential] = await db
       .select({
         id: CredentialsTable.id,
+        status: CredentialsTable.status,
         certificateAssetKey: CredentialsTable.certificate_asset_key,
       })
       .from(CredentialsTable)
@@ -335,6 +336,10 @@ export const updateCredentialAction = actionClient
 
     if (!existingCredential) {
       return { failure: "Credential not found" }
+    }
+
+    if (existingCredential.status === "archived") {
+      return { failure: "Credential has already been removed from the workspace" }
     }
 
     try {
@@ -418,6 +423,7 @@ export const deleteCredentialAction = actionClient
     const [existingCredential] = await db
       .select({
         id: CredentialsTable.id,
+        status: CredentialsTable.status,
         certificateAssetKey: CredentialsTable.certificate_asset_key,
       })
       .from(CredentialsTable)
@@ -431,6 +437,10 @@ export const deleteCredentialAction = actionClient
 
     if (!existingCredential) {
       return { failure: "Credential not found" }
+    }
+
+    if (existingCredential.status === "archived") {
+      return { failure: "Credential has already been removed from the workspace" }
     }
 
     await db

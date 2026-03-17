@@ -56,7 +56,10 @@ export async function POST(request: Request) {
   }
 
   const [credential] = await db
-    .select({ id: CredentialsTable.id })
+    .select({
+      id: CredentialsTable.id,
+      status: CredentialsTable.status,
+    })
     .from(CredentialsTable)
     .where(
       and(
@@ -68,6 +71,13 @@ export async function POST(request: Request) {
 
   if (!credential) {
     return NextResponse.json({ error: "Credential not found" }, { status: 404 })
+  }
+
+  if (credential.status === "archived") {
+    return NextResponse.json(
+      { error: "Credential has already been removed from the workspace" },
+      { status: 409 }
+    )
   }
 
   const uploaded = await uploadCredentialCertificate({
