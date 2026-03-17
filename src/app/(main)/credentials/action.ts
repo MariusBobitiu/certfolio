@@ -349,6 +349,7 @@ export const updateCredentialAction = actionClient
         verificationUrl: parsedInput.verificationUrl,
         certificateAssetKey,
       })
+      let warning: string | undefined
 
       const [credential] = await db
         .update(CredentialsTable)
@@ -378,14 +379,14 @@ export const updateCredentialAction = actionClient
         try {
           await deleteCredentialAsset(existingCredential.certificateAssetKey)
         } catch {
-          return {
-            failure: "Credential saved, but the old certificate file could not be removed.",
-          }
+          warning =
+            "Credential saved, but the previous certificate file could not be removed."
         }
       }
 
       return {
         success: "Credential updated",
+        warning,
         credential: serializeCredentialDates(credential),
         issuer: {
           id: issuer.id,

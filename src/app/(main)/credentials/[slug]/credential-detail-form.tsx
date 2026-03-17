@@ -254,6 +254,9 @@ export function CredentialDetailForm({
       }))
       setSubmitError(null)
       toast.success("Credential updated")
+      if (data.warning) {
+        toast.warning(data.warning)
+      }
     },
     onError: ({ error }) => {
       setSubmitError(
@@ -365,7 +368,7 @@ export function CredentialDetailForm({
       })
 
       const data = (await response.json()) as
-        | { key: string; url: string }
+        | { key: string; url: string; warning?: string }
         | { error: string }
 
       if (!response.ok || !("key" in data)) {
@@ -383,6 +386,9 @@ export function CredentialDetailForm({
         certificateAssetUrl: data.url,
       }))
       toast.success("Certificate uploaded")
+      if ("warning" in data && data.warning) {
+        toast.warning(data.warning)
+      }
     } catch {
       setCertificateUploadError(
         "We could not upload the certificate right now."

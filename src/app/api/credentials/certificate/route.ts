@@ -92,13 +92,12 @@ export async function POST(request: Request) {
     try {
       await deleteCredentialAsset(currentCertificateAssetKey.trim())
     } catch {
-      return NextResponse.json(
-        {
-          error:
-            "Certificate uploaded, but the previous file could not be removed",
-        },
-        { status: 500 }
-      )
+      return NextResponse.json({
+        key: uploaded.key,
+        url: uploaded.url,
+        warning:
+          "Certificate uploaded, but the previous file could not be removed.",
+      })
     }
   }
 
