@@ -2,7 +2,6 @@ export type IssuerTheme = {
   cardClassName: string
   logoClassName: string
   badgeClassName: string
-  surfaceClassName: string
 }
 
 const issuerThemeMap: Record<string, IssuerTheme> = {
@@ -13,7 +12,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/12 bg-linear-to-br from-zinc-800 via-zinc-900 to-black text-orange-300",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   comptia: {
     cardClassName:
@@ -22,7 +20,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   microsoft: {
     cardClassName:
@@ -31,7 +28,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   "google-cloud": {
     cardClassName:
@@ -40,7 +36,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   cisco: {
     cardClassName:
@@ -49,7 +44,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   isc2: {
     cardClassName:
@@ -58,7 +52,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   "offensive-security": {
     cardClassName:
@@ -67,7 +60,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-red-500/20 via-white/10 to-white/5 text-red-100",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   "red-hat": {
     cardClassName:
@@ -76,7 +68,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-red-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   "linux-foundation": {
     cardClassName:
@@ -85,7 +76,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-slate-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   pmi: {
     cardClassName:
@@ -94,7 +84,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-white/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   tryhackme: {
     cardClassName:
@@ -103,7 +92,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-red-500/20 via-white/10 to-white/5 text-red-100",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   "ec-council": {
     cardClassName:
@@ -112,7 +100,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-amber-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   vmware: {
     cardClassName:
@@ -121,7 +108,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-cyan-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   oracle: {
     cardClassName:
@@ -130,7 +116,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-red-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   salesforce: {
     cardClassName:
@@ -139,7 +124,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-sky-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   ibm: {
     cardClassName:
@@ -148,7 +132,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-blue-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   "pearson-vue": {
     cardClassName:
@@ -157,7 +140,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-emerald-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
   "tcm-security": {
     cardClassName:
@@ -166,7 +148,6 @@ const issuerThemeMap: Record<string, IssuerTheme> = {
       "border-white/20 bg-linear-to-br from-white/18 via-slate-100/10 to-white/5 text-white",
     badgeClassName:
       "bg-black/18 text-emerald-200 ring-1 ring-white/10",
-    surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
   },
 }
 
@@ -177,7 +158,6 @@ const fallbackIssuerTheme: IssuerTheme = {
     "border-border/70 bg-card/88 text-foreground dark:border-white/8 dark:bg-white/4",
   badgeClassName:
     "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
-  surfaceClassName: "border-border/70 bg-card/92 dark:border-white/8",
 }
 
 export function getIssuerTheme(themeKey: string | null | undefined) {

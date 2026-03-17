@@ -22,7 +22,6 @@ import {
   type IssuerAutocompleteOption,
   IssuerAutocompleteInput,
 } from "@/components/credentials/issuer-autocomplete-input"
-import { CredentialStatusBadge } from "@/components/credentials/credential-status-badge"
 import { CredentialVerificationBadge } from "@/components/credentials/credential-verification-badge"
 import {
   AlertDialog,
@@ -64,6 +63,19 @@ type CredentialVerificationStatus =
   | "verified_external"
   | "linked_external"
   | "self_declared"
+
+const visibilityOptionLabels = {
+  draft: "Private",
+  published: "Public",
+  archived: "Private",
+} as const
+
+const sourceTypeLabels = {
+  credly: "Credly",
+  issuer_link: "External proof",
+  manual: "Direct entry",
+  uploaded_certificate: "Uploaded proof",
+} as const
 
 type CredentialDetailFormProps = {
   credential: {
@@ -179,7 +191,7 @@ function createInitialFormState(
     certificateAssetKey: credential.certificateAssetKey,
     certificateAssetUrl: credential.certificateAssetUrl,
     summary: credential.summary,
-    status: credential.status,
+    status: credential.status === "published" ? "published" : "draft",
     sourceType: credential.sourceType,
     verificationStatus: credential.verificationStatus,
     issuer: credential.issuer,
@@ -409,7 +421,6 @@ export function CredentialDetailForm({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] lg:items-center xl:flex-1">
             <div className="flex items-center gap-3">
-              <CredentialStatusBadge status={formState.status} />
               <Select
                 value={formState.status}
                 onValueChange={(value) =>
@@ -418,12 +429,11 @@ export function CredentialDetailForm({
                 disabled={isBusy}
               >
                 <SelectTrigger className="w-full max-w-40">
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue placeholder="Select visibility" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem value="draft">Private</SelectItem>
+                  <SelectItem value="published">Public</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -436,9 +446,16 @@ export function CredentialDetailForm({
             </div>
 
             <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Visibility</span>
+              <span className="text-base font-medium text-foreground">
+                {visibilityOptionLabels[formState.status]}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">Source</span>
               <span className="text-base font-medium text-foreground">
-                {formState.sourceType.replace("_", " ")}
+                {sourceTypeLabels[formState.sourceType]}
               </span>
             </div>
           </div>
@@ -495,7 +512,7 @@ export function CredentialDetailForm({
           <FieldGroup>
             <div className="space-y-5">
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
                   Credential Details
                 </p>
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -504,8 +521,12 @@ export function CredentialDetailForm({
                 </p>
               </div>
 
-              <Field data-invalid={Boolean(validationErrors.title?._errors?.[0])}>
-                <FieldLabel htmlFor="credential-title">Credential title</FieldLabel>
+              <Field
+                data-invalid={Boolean(validationErrors.title?._errors?.[0])}
+              >
+                <FieldLabel htmlFor="credential-title">
+                  Credential title
+                </FieldLabel>
                 <Input
                   id="credential-title"
                   value={formState.title}
@@ -520,7 +541,9 @@ export function CredentialDetailForm({
               </Field>
 
               <Field
-                data-invalid={Boolean(validationErrors.customIssuerName?._errors?.[0])}
+                data-invalid={Boolean(
+                  validationErrors.customIssuerName?._errors?.[0]
+                )}
               >
                 <FieldLabel>Issuer</FieldLabel>
                 <IssuerAutocompleteInput
@@ -530,19 +553,19 @@ export function CredentialDetailForm({
                   onChange={handleIssuerInputChange}
                   onSelectIssuer={(issuer) => {
                     const fullIssuer =
-                      availableIssuers.find((entry) => entry.id === issuer.id) ??
-                      null
+                      availableIssuers.find(
+                        (entry) => entry.id === issuer.id
+                      ) ?? null
 
                     setFormState((current) => ({
                       ...current,
                       issuerQuery: issuer.displayName,
                       issuerId: issuer.id,
-                      issuer:
-                        fullIssuer ?? {
-                          ...issuer,
-                          themeKey: "",
-                          logoUrl: "",
-                        },
+                      issuer: fullIssuer ?? {
+                        ...issuer,
+                        themeKey: "",
+                        logoUrl: "",
+                      },
                     }))
                   }}
                   onSelectCustomIssuer={(value) =>
@@ -556,13 +579,19 @@ export function CredentialDetailForm({
                 />
                 <FieldError
                   errors={[
-                    { message: validationErrors.customIssuerName?._errors?.[0] },
+                    {
+                      message: validationErrors.customIssuerName?._errors?.[0],
+                    },
                   ]}
                 />
               </Field>
 
               <div className="grid gap-6 sm:grid-cols-2">
-                <Field data-invalid={Boolean(validationErrors.issuedOn?._errors?.[0])}>
+                <Field
+                  data-invalid={Boolean(
+                    validationErrors.issuedOn?._errors?.[0]
+                  )}
+                >
                   <FieldLabel>Issue date</FieldLabel>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Select
@@ -604,12 +633,16 @@ export function CredentialDetailForm({
                     </Select>
                   </div>
                   <FieldError
-                    errors={[{ message: validationErrors.issuedOn?._errors?.[0] }]}
+                    errors={[
+                      { message: validationErrors.issuedOn?._errors?.[0] },
+                    ]}
                   />
                 </Field>
 
                 <Field
-                  data-invalid={Boolean(validationErrors.expiresOn?._errors?.[0])}
+                  data-invalid={Boolean(
+                    validationErrors.expiresOn?._errors?.[0]
+                  )}
                 >
                   <FieldLabel>Expiry date</FieldLabel>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -652,7 +685,9 @@ export function CredentialDetailForm({
                     </Select>
                   </div>
                   <FieldError
-                    errors={[{ message: validationErrors.expiresOn?._errors?.[0] }]}
+                    errors={[
+                      { message: validationErrors.expiresOn?._errors?.[0] },
+                    ]}
                   />
                 </Field>
               </div>
@@ -662,7 +697,9 @@ export function CredentialDetailForm({
                   validationErrors.verificationUrl?._errors?.[0]
                 )}
               >
-                <FieldLabel htmlFor="verification-url">Verification link</FieldLabel>
+                <FieldLabel htmlFor="verification-url">
+                  Verification link
+                </FieldLabel>
                 <Input
                   id="verification-url"
                   type="url"
@@ -684,7 +721,9 @@ export function CredentialDetailForm({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="verification-code">Verification code</FieldLabel>
+                <FieldLabel htmlFor="verification-code">
+                  Verification code
+                </FieldLabel>
                 <Input
                   id="verification-code"
                   value={formState.verificationCode}
@@ -762,7 +801,10 @@ export function CredentialDetailForm({
                 <FieldError
                   errors={[
                     { message: certificateUploadError ?? undefined },
-                    { message: validationErrors.certificateAssetKey?._errors?.[0] },
+                    {
+                      message:
+                        validationErrors.certificateAssetKey?._errors?.[0],
+                    },
                   ]}
                 />
               </Field>
@@ -772,7 +814,7 @@ export function CredentialDetailForm({
 
         <div className="space-y-6 xl:sticky xl:top-8">
           <div className="rounded-4xl border border-border/70 bg-card/92 p-5 shadow-md backdrop-blur dark:border-white/8 dark:shadow-white/2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
               Preview
             </p>
             <CredentialCardPreview
@@ -788,13 +830,12 @@ export function CredentialDetailForm({
                   : credential.issuedOn
               }
               sourceType={formState.sourceType}
-              status={formState.status}
               verificationStatus={formState.verificationStatus}
             />
           </div>
 
           <div className="rounded-4xl border border-border/70 bg-card/92 p-5 shadow-md backdrop-blur dark:border-white/8 dark:shadow-white/2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
               Attached proof
             </p>
 

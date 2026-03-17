@@ -51,15 +51,12 @@ const credentialBaseSchema = z
     }
   })
 
-export const createCredentialSchema = credentialBaseSchema.extend({
-  issuedOn: monthPrecisionSchema,
-})
+export const createCredentialSchema = credentialBaseSchema
 
 export type CreateCredentialInput = z.input<typeof createCredentialSchema>
 
-export const updateCredentialSchema = credentialBaseSchema.extend({
+export const updateCredentialSchema = credentialBaseSchema.safeExtend({
   slug: z.string().trim().min(1, "Credential slug is required"),
-  issuedOn: monthPrecisionSchema,
   status: z.enum(["draft", "published", "archived"]),
 })
 

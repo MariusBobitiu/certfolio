@@ -34,6 +34,20 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { createCredentialAction } from "@/app/(main)/credentials/action"
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
+import { cn } from "@/lib/utils"
+
+const visibilityToneMap = {
+  draft: "bg-yellow-500 fill-yellow-500",
+  published: "bg-green-500 fill-green-500",
+  archived: "bg-gray-500 fill-gray-500",
+}
+
+const visibilityLabelMap = {
+  draft: "Private",
+  published: "Public",
+  archived: "Private",
+} as const
 
 type CredentialRecord = {
   id: string
@@ -80,7 +94,7 @@ type ActionValidationErrors = {
 
 const foundationSignals = [
   "Issuer-led credential identity",
-  "External links and self-declared entries kept distinct",
+  "Verified links and profile records kept distinct",
   "Built to expand into richer detail editing next",
 ] as const
 
@@ -133,9 +147,7 @@ export function CredentialsWorkspace({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [draft, setDraft] = useState<CreateDraftState>(emptyDraft)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [activeFilter, setActiveFilter] = useState<
-    "all" | "draft" | "published" | "archived"
-  >("all")
+  const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "published">("all")
 
   const { execute, isPending, result } = useAction(createCredentialAction, {
     onSuccess: ({ data }) => {
@@ -176,29 +188,28 @@ export function CredentialsWorkspace({
   const validationErrors =
     (result.validationErrors as ActionValidationErrors | undefined) ?? {}
 
-  const draftCount = credentials.filter(
+  const visibleCredentials = credentials.filter(
+    (credential) => credential.status !== "archived"
+  )
+
+  const draftCount = visibleCredentials.filter(
     (credential) => credential.status === "draft"
   ).length
-  const publishedCount = credentials.filter(
+  const publishedCount = visibleCredentials.filter(
     (credential) => credential.status === "published"
-  ).length
-  const archivedCount = credentials.filter(
-    (credential) => credential.status === "archived"
   ).length
 
   const filteredCredentials =
     activeFilter === "all"
-      ? credentials
-      : credentials.filter((credential) => credential.status === activeFilter)
+      ? visibleCredentials
+      : visibleCredentials.filter((credential) => credential.status === activeFilter)
 
   const activeFilterDescription =
     activeFilter === "all"
-      ? "All credentials in one workspace, regardless of where they are in the publishing flow."
+      ? "Every credential currently visible in your workspace, from private drafts to public entries."
       : activeFilter === "draft"
-        ? "Credentials still being shaped before richer detail editing and public reuse."
-        : activeFilter === "published"
-          ? "Credentials that are ready to represent your professional identity more directly."
-          : "Credentials kept on record without staying in the active collection."
+        ? "Credentials you are still shaping before making them public."
+        : "Credentials ready to represent your professional identity publicly."
 
   const handleDialogOpenChange = (open: boolean) => {
     if (!open) {
@@ -280,8 +291,8 @@ export function CredentialsWorkspace({
                 </h1>
                 <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
                   This workspace now supports real credential records, seeded or
-                  custom issuers, and a clean split between externally linked and
-                  self-declared entries.
+                  custom issuers, and a clean split between verified links and
+                  profile records.
                 </p>
               </div>
 
@@ -307,7 +318,7 @@ export function CredentialsWorkspace({
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 lg:grid-cols-3">
           <button
             type="button"
             onClick={() => setActiveFilter("all")}
@@ -321,7 +332,7 @@ export function CredentialsWorkspace({
               Total
             </p>
             <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-              {credentials.length}
+              {visibleCredentials.length}
             </p>
           </button>
           <button
@@ -334,7 +345,7 @@ export function CredentialsWorkspace({
             }`}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Drafts
+              Private
             </p>
             <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
               {draftCount}
@@ -350,26 +361,10 @@ export function CredentialsWorkspace({
             }`}
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Published
+              Public
             </p>
             <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
               {publishedCount}
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilter("archived")}
-            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
-              activeFilter === "archived"
-                ? "border-foreground/15 bg-muted/40"
-                : "border-border/70 bg-card/92 hover:border-border/90"
-            }`}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Archived
-            </p>
-            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-              {archivedCount}
             </p>
           </button>
         </section>
@@ -384,10 +379,8 @@ export function CredentialsWorkspace({
                 {activeFilter === "all"
                   ? "All credentials"
                   : activeFilter === "draft"
-                    ? "Draft credentials"
-                    : activeFilter === "published"
-                      ? "Published credentials"
-                      : "Archived credentials"}
+                    ? "Private credentials"
+                    : "Public credentials"}
               </h2>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
                 {activeFilterDescription}
@@ -401,14 +394,28 @@ export function CredentialsWorkspace({
                 <Link
                   key={credential.id}
                   href={`/credentials/${credential.slug}` as Route}
+                  className="relative"
                 >
+                  <div className="z-10 absolute top-0 right-0 flex items-center justify-center">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className={cn(
+                          "size-4 rounded-full",
+                          visibilityToneMap[credential.status]
+                        )} />
+                      </TooltipTrigger>
+                      <TooltipContent className={cn("py-0.5", visibilityToneMap[credential.status])} arrowClassName={cn("-z-10", visibilityToneMap[credential.status])}>
+                        <p className="text-sm">
+                          {visibilityLabelMap[credential.status]}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <CredentialCardPreview
                     issuerDisplayName={credential.issuer.displayName}
                     issuerThemeKey={credential.issuer.themeKey}
                     title={credential.title}
                     issuedOn={credential.issuedOn}
-                    sourceType={credential.sourceType}
-                    status={credential.status}
                     verificationStatus={credential.verificationStatus}
                     className="transition-transform duration-150 hover:-translate-y-0.5"
                   />
