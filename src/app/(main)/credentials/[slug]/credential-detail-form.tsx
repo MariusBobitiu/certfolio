@@ -4,8 +4,10 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   FileBadge2,
+  Globe,
   Link2,
   LoaderCircle,
+  Lock,
   Trash2,
   Upload,
 } from "lucide-react"
@@ -22,7 +24,6 @@ import {
   type IssuerAutocompleteOption,
   IssuerAutocompleteInput,
 } from "@/components/credentials/issuer-autocomplete-input"
-import { CredentialVerificationBadge } from "@/components/credentials/credential-verification-badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +42,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -51,7 +51,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 
 type CredentialStatus = "draft" | "published"
 type PersistedCredentialStatus = CredentialStatus | "archived"
@@ -64,19 +66,6 @@ type CredentialVerificationStatus =
   | "verified_external"
   | "linked_external"
   | "self_declared"
-
-const visibilityOptionLabels = {
-  draft: "Private",
-  published: "Public",
-  archived: "Private",
-} as const
-
-const sourceTypeLabels = {
-  credly: "Credly",
-  issuer_link: "External proof",
-  manual: "Direct entry",
-  uploaded_certificate: "Uploaded proof",
-} as const
 
 type CredentialDetailFormProps = {
   credential: {
@@ -425,89 +414,98 @@ export function CredentialDetailForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-      <div className="rounded-4xl border border-border/70 bg-card/92 px-5 py-4 shadow-md backdrop-blur sm:px-6 dark:border-white/8 dark:shadow-white/2">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] lg:items-center xl:flex-1">
-            <div className="flex items-center gap-3">
-              <Select
-                value={formState.status}
-                onValueChange={(value) =>
-                  handleChange("status", value as CredentialStatus)
-                }
-                disabled={isBusy}
-              >
-                <SelectTrigger className="w-full max-w-40">
-                  <SelectValue placeholder="Select visibility" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Private</SelectItem>
-                  <SelectItem value="published">Public</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Proof</span>
-              <CredentialVerificationBadge
-                status={formState.verificationStatus}
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Visibility</span>
-              <span className="text-base font-medium text-foreground">
-                {visibilityOptionLabels[formState.status]}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Source</span>
-              <span className="text-base font-medium text-foreground">
-                {sourceTypeLabels[formState.sourceType]}
-              </span>
+      <div className="rounded-4xl border border-border/70 bg-card/92 px-5 py-5 shadow-md backdrop-blur sm:px-6 dark:border-white/8 dark:shadow-white/2">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-1">
+            <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-8 lg:gap-y-3">
+              <div className="flex items-start gap-3">
+                <Switch
+                  id="credential-visible"
+                  checked={formState.status === "published"}
+                  disabled={isBusy}
+                  onCheckedChange={(checked) =>
+                    handleChange("status", checked ? "published" : "draft")
+                  }
+                  className="mt-1"
+                />
+                <label
+                  htmlFor="credential-visible"
+                  className="flex flex-col gap-1 min-w-0"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-base font-medium text-foreground">
+                      Visible on profile
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-colors",
+                        formState.status === "published"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-300"
+                      )}
+                    >
+                      {formState.status === "published" ? (
+                        <Globe className="size-3" />
+                      ) : (
+                        <Lock className="size-3" />
+                      )}
+                      {formState.status === "published" ? "Public" : "Private"}
+                    </span>
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Turn on to showcase this credential on your public profile and share it with others.
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
 
-          <Button type="submit" disabled={isBusy} className="rounded-full">
-            Save changes
-          </Button>
+          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+            <Button
+              type="submit"
+              disabled={isBusy}
+              className="rounded-full xl:shrink-0"
+            >
+              Save changes
+            </Button>
 
-          <AlertDialog
-            open={isDeleteDialogOpen}
-            onOpenChange={setIsDeleteDialogOpen}
-          >
-            <AlertDialogTrigger asChild>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={isBusy}
-                className="rounded-full"
-              >
-                <Trash2 className="size-4" />
-                Remove from workspace
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Remove this credential?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will hide the credential from your workspace and keep it
-                  out of the public surface. You can still retain the record
-                  internally.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isBusy}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
+            <AlertDialog
+              open={isDeleteDialogOpen}
+              onOpenChange={setIsDeleteDialogOpen}
+            >
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
                   disabled={isBusy}
-                  onClick={() => deleteCredential({ slug: formState.slug })}
+                  className="rounded-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive xl:shrink-0"
                 >
-                  Remove credential
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Trash2 className="size-4" />
+                  Remove from workspace
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove this credential?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will hide the credential from your workspace and keep it
+                    out of the public surface. You can still retain the record
+                    internally.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isBusy}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={isBusy}
+                    onClick={() => deleteCredential({ slug: formState.slug })}
+                  >
+                    Remove credential
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
 
@@ -758,66 +756,6 @@ export function CredentialDetailForm({
                 />
               </Field>
             </div>
-
-            <FieldSeparator>Proof</FieldSeparator>
-
-            <div className="space-y-5">
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                Upload a certificate file if you want a stored supporting
-                document in addition to any external verification link.
-              </p>
-
-              <Field
-                data-invalid={Boolean(
-                  validationErrors.certificateAssetKey?._errors?.[0]
-                )}
-              >
-                <FieldLabel>Certificate file</FieldLabel>
-                <div
-                  {...getRootProps()}
-                  className={`rounded-3xl border border-dashed px-5 py-6 transition-colors ${
-                    isDragActive
-                      ? "border-primary bg-primary/5"
-                      : "border-border/70 bg-card/60 dark:border-white/8"
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-foreground">
-                        Drop a PDF or image here, or browse to upload.
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Supported: PDF, PNG, JPG, WebP. Max 8MB.
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isBusy}
-                      onClick={open}
-                      className="rounded-full"
-                    >
-                      {isUploadingCertificate ? (
-                        <LoaderCircle className="size-4 animate-spin" />
-                      ) : (
-                        <Upload className="size-4" />
-                      )}
-                      Upload file
-                    </Button>
-                  </div>
-                </div>
-                <FieldError
-                  errors={[
-                    { message: certificateUploadError ?? undefined },
-                    {
-                      message:
-                        validationErrors.certificateAssetKey?._errors?.[0],
-                    },
-                  ]}
-                />
-              </Field>
-            </div>
           </FieldGroup>
         </div>
 
@@ -841,6 +779,69 @@ export function CredentialDetailForm({
               verificationStatus={formState.verificationStatus}
             />
           </div>
+
+          <div className="rounded-4xl border border-border/70 bg-card/92 p-5 shadow-md backdrop-blur dark:border-white/8 dark:shadow-white/2">
+              <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">
+                Certificate
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-5 text-muted-foreground">
+                Upload a certificate file if you want a stored supporting
+                document in addition to any external verification link.
+              </p>
+
+              <div className="mt-4">
+                <Field
+                  data-invalid={Boolean(
+                    validationErrors.certificateAssetKey?._errors?.[0]
+                  )}
+                >
+                  <div
+                    {...getRootProps()}
+                    className={cn(
+                      "rounded-2xl border border-dashed px-5 py-6 transition-colors",
+                      isDragActive
+                        ? "border-primary bg-primary/5"
+                        : "border-border/70 bg-card/60 dark:border-white/8"
+                    )}
+                  >
+                    <input {...getInputProps()} />
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Drop a PDF or image here, or browse to upload.
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Supported: PDF, PNG, JPG, WebP. Max 8MB.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isBusy}
+                        onClick={open}
+                        className="rounded-full"
+                      >
+                        {isUploadingCertificate ? (
+                          <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                          <Upload className="size-4" />
+                        )}
+                        Upload file
+                      </Button>
+                    </div>
+                  </div>
+                  <FieldError
+                    errors={[
+                      { message: certificateUploadError ?? undefined },
+                      {
+                        message:
+                          validationErrors.certificateAssetKey?._errors?.[0],
+                      },
+                    ]}
+                  />
+                </Field>
+              </div>
+            </div>
 
           <div className="rounded-4xl border border-border/70 bg-card/92 p-5 shadow-md backdrop-blur dark:border-white/8 dark:shadow-white/2">
             <p className="text-xs font-semibold tracking-[0.22em] text-muted-foreground uppercase">

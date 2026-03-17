@@ -50,7 +50,7 @@ export default async function RootLayout({
           storageKey="theme"
         >
           <TooltipProvider>{children}</TooltipProvider>
-          <Toaster position="bottom-right" />
+          <Toaster position="bottom-right" duration={5000} visibleToasts={3} />
         </ThemeProvider>
       </body>
     </html>

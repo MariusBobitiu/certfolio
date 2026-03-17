@@ -3,10 +3,11 @@
 import Link from "next/link"
 import type { Route } from "next"
 import { useState } from "react"
-import { Plus } from "lucide-react"
+import { Globe, Lock, Plus } from "lucide-react"
 import { useAction } from "next-safe-action/hooks"
 import { toast } from "sonner"
 
+import { createCredentialAction } from "@/app/(main)/credentials/action"
 import { CredentialCardPreview } from "@/components/credentials/credential-card-preview"
 import { IssuerAutocompleteInput } from "@/components/credentials/issuer-autocomplete-input"
 import { Button } from "@/components/ui/button"
@@ -33,8 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createCredentialAction } from "@/app/(main)/credentials/action"
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 const visibilityToneMap = {
@@ -92,12 +92,6 @@ type ActionValidationErrors = {
   expiresOn?: { _errors?: string[] }
 }
 
-const foundationSignals = [
-  "Issuer-led credential identity",
-  "Verified links and profile records kept distinct",
-  "Built to expand into richer detail editing next",
-] as const
-
 const emptyDraft: CreateDraftState = {
   title: "",
   issuerQuery: "",
@@ -147,7 +141,9 @@ export function CredentialsWorkspace({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [draft, setDraft] = useState<CreateDraftState>(emptyDraft)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "published">("all")
+  const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "published">(
+    "all"
+  )
 
   const { execute, isPending, result } = useAction(createCredentialAction, {
     onSuccess: ({ data }) => {
@@ -191,6 +187,7 @@ export function CredentialsWorkspace({
   const visibleCredentials = credentials.filter(
     (credential) => credential.status !== "archived"
   )
+  const hasCredentials = visibleCredentials.length > 0
 
   const draftCount = visibleCredentials.filter(
     (credential) => credential.status === "draft"
@@ -202,7 +199,9 @@ export function CredentialsWorkspace({
   const filteredCredentials =
     activeFilter === "all"
       ? visibleCredentials
-      : visibleCredentials.filter((credential) => credential.status === activeFilter)
+      : visibleCredentials.filter(
+          (credential) => credential.status === activeFilter
+        )
 
   const activeFilterDescription =
     activeFilter === "all"
@@ -277,35 +276,21 @@ export function CredentialsWorkspace({
 
   return (
     <>
-      <div className="space-y-8">
-        <section className="relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/55 px-6 py-8 shadow-lg sm:px-8 sm:py-10 lg:px-10 lg:py-12 dark:border-white/8 dark:from-background dark:via-card/30 dark:to-card/40 dark:shadow-white/2">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl space-y-6">
-              <div className="inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground backdrop-blur">
-                Credentials Workspace
-              </div>
-
-              <div className="space-y-4">
-                <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
-                  Structure your certifications around issuer identity and proof.
-                </h1>
-                <p className="max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                  This workspace now supports real credential records, seeded or
-                  custom issuers, and a clean split between verified links and
-                  profile records.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                {foundationSignals.map((signal) => (
-                  <div
-                    key={signal}
-                    className="rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm text-foreground/85 backdrop-blur dark:border-white/8 dark:bg-white/3"
-                  >
-                    {signal}
-                  </div>
-                ))}
-              </div>
+      {hasCredentials ? (
+        <section className="mt-8 space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Credential Index
+              </p>
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">
+                Your credentials should feel readable, not buried.
+              </h2>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Keep the collection readable at a glance, then use each
+                credential page to develop the fuller proof and supporting
+                detail.
+              </p>
             </div>
 
             <Button
@@ -316,132 +301,199 @@ export function CredentialsWorkspace({
               Add credential
             </Button>
           </div>
-        </section>
 
-        <section className="grid gap-3 lg:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => setActiveFilter("all")}
-            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
-              activeFilter === "all"
-                ? "border-foreground/15 bg-card"
-                : "border-border/70 bg-card/92 hover:border-border/90"
-            }`}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Total
-            </p>
-            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-              {visibleCredentials.length}
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilter("draft")}
-            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
-              activeFilter === "draft"
-                ? "border-amber-500/30 bg-amber-500/5"
-                : "border-border/70 bg-card/92 hover:border-border/90"
-            }`}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Private
-            </p>
-            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-              {draftCount}
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveFilter("published")}
-            className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
-              activeFilter === "published"
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-border/70 bg-card/92 hover:border-border/90"
-            }`}
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Public
-            </p>
-            <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-              {publishedCount}
-            </p>
-          </button>
-        </section>
-
-        <section className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2">
-          <div className="flex flex-col gap-4 border-b border-border/60 pb-5 dark:border-white/8">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                Collection Surface
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => setActiveFilter("all")}
+              className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+                activeFilter === "all"
+                  ? "border-foreground/15 bg-card"
+                  : "border-border/70 bg-card/92 hover:border-border/90"
+              }`}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Total
               </p>
-              <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">
-                {activeFilter === "all"
-                  ? "All credentials"
-                  : activeFilter === "draft"
-                    ? "Private credentials"
-                    : "Public credentials"}
-              </h2>
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                {activeFilterDescription}
+              <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+                {visibleCredentials.length}
               </p>
-            </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter("draft")}
+              className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+                activeFilter === "draft"
+                  ? "border-amber-500/30 bg-amber-500/5"
+                  : "border-border/70 bg-card/92 hover:border-border/90"
+              }`}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Private
+              </p>
+              <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+                {draftCount}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter("published")}
+              className={`rounded-3xl border px-5 py-5 text-left shadow-md transition-colors dark:border-white/8 dark:shadow-white/2 ${
+                activeFilter === "published"
+                  ? "border-emerald-500/30 bg-emerald-500/5"
+                  : "border-border/70 bg-card/92 hover:border-border/90"
+              }`}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Public
+              </p>
+              <p className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+                {publishedCount}
+              </p>
+            </button>
           </div>
 
-          {filteredCredentials.length > 0 ? (
-            <div className="mt-6 grid gap-4 xl:grid-cols-3">
-              {filteredCredentials.map((credential) => (
-                <Link
-                  key={credential.id}
-                  href={`/credentials/${credential.slug}` as Route}
-                  className="relative"
-                >
-                  <div className="z-10 absolute top-0 right-0 flex items-center justify-center">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className={cn(
-                          "size-4 rounded-full",
-                          visibilityToneMap[credential.status]
-                        )} />
-                      </TooltipTrigger>
-                      <TooltipContent className={cn("py-0.5", visibilityToneMap[credential.status])} arrowClassName={cn("-z-10", visibilityToneMap[credential.status])}>
-                        <p className="text-sm">
-                          {visibilityLabelMap[credential.status]}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <CredentialCardPreview
-                    issuerDisplayName={credential.issuer.displayName}
-                    issuerThemeKey={credential.issuer.themeKey}
-                    title={credential.title}
-                    issuedOn={credential.issuedOn}
-                    verificationStatus={credential.verificationStatus}
-                    className="transition-transform duration-150 hover:-translate-y-0.5"
-                  />
-                </Link>
-              ))}
+          <div className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2">
+            <div className="flex flex-col gap-4 border-b border-border/60 pb-5 dark:border-white/8">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  Collection Surface
+                </p>
+                <h3 className="text-xl font-semibold tracking-[-0.03em] sm:text-2xl">
+                  {activeFilter === "all"
+                    ? "All credentials"
+                    : activeFilter === "draft"
+                      ? "Private credentials"
+                      : "Public credentials"}
+                </h3>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {activeFilterDescription}
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="mt-6 rounded-4xl border border-dashed border-border/70 bg-background/60 px-6 py-10 text-center dark:border-white/8 dark:bg-white/3">
-              <h3 className="text-xl font-semibold tracking-[-0.03em]">
-                No credentials in this view yet.
-              </h3>
-              <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                Add the core facts first, then come back for richer editing in
-                the next phase.
-              </p>
+
+            <div className="mt-6 grid gap-4 xl:grid-cols-3">
+              {filteredCredentials.length > 0 ? (
+                filteredCredentials.map((credential) => (
+                  <Link
+                    key={credential.id}
+                    href={`/credentials/${credential.slug}` as Route}
+                    className="relative"
+                  >
+                    <div className="absolute top-0 right-0 z-10 flex items-center justify-center">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={cn(
+                              "size-5 rounded-full flex items-center justify-center",
+                              visibilityToneMap[credential.status]
+                            )}
+                          >
+                            {credential.status === "published" ? (
+                              <Globe className="size-3" />
+                            ) : (
+                              <Lock className="size-3" />
+                            )}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          className={cn(
+                            "py-0.5",
+                            visibilityToneMap[credential.status]
+                          )}
+                          arrowClassName={cn(
+                            "-z-10",
+                            visibilityToneMap[credential.status]
+                          )}
+                        >
+                          <p className="text-sm">
+                            {visibilityLabelMap[credential.status]}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <CredentialCardPreview
+                      issuerDisplayName={credential.issuer.displayName}
+                      issuerThemeKey={credential.issuer.themeKey}
+                      title={credential.title}
+                      issuedOn={credential.issuedOn}
+                      verificationStatus={credential.verificationStatus}
+                      className="transition-transform duration-150 hover:-translate-y-0.5"
+                    />
+                  </Link>
+                ))
+              ) : (
+                <div className="xl:col-span-3">
+                  <div className="rounded-3xl border border-dashed border-border/70 bg-muted/35 px-5 py-6 dark:border-white/8 dark:bg-white/3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          No {activeFilter === "all" ? "" : `${activeFilter} `}credentials yet
+                        </p>
+                        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                          {activeFilter === "draft"
+                            ? "Start a new credential or move one back into private while you refine it."
+                            : activeFilter === "published"
+                              ? "Publish stronger credentials here once they are ready to represent your work."
+                              : "Create the first credential entry to start shaping your proof-backed profile."}
+                        </p>
+                      </div>
+
+                      <Button
+                        type="button"
+                        className="rounded-full sm:self-start"
+                        onClick={() => setIsDialogOpen(true)}
+                      >
+                        <Plus className="size-4" />
+                        Add credential
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="mt-8">
+          <div className="rounded-4xl border border-border/70 bg-card/92 p-6 shadow-md backdrop-blur sm:p-8 dark:border-white/8 dark:shadow-white/2">
+            <div className="flex flex-col gap-4 border-b border-border/60 pb-5 dark:border-white/8 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  Collection Surface
+                </p>
+                <h2 className="text-2xl font-semibold tracking-[-0.03em]">
+                  No credentials yet, but the first ones should set the tone
+                </h2>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Start with credentials you can explain clearly now and support
+                  more strongly over time with richer proof, detail, and
+                  verification context.
+                </p>
+              </div>
+
               <Button
-                className="mt-6 rounded-full"
+                className="rounded-full lg:shrink-0"
                 onClick={() => setIsDialogOpen(true)}
               >
                 <Plus className="size-4" />
-                Add first credential
+                Add credential
               </Button>
             </div>
-          )}
+
+            <div className="mt-6 rounded-3xl border border-dashed border-border/70 bg-muted/45 p-5 dark:border-white/10 dark:bg-white/[0.035]">
+              <p className="text-sm font-medium text-foreground">
+                Start with the credential facts that matter most
+              </p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Add the issuer, issue date, proof link, and verification code
+                first, then deepen each credential later with stronger
+                supporting detail.
+              </p>
+            </div>
+          </div>
         </section>
-      </div>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-w-3xl sm:max-w-2xl">

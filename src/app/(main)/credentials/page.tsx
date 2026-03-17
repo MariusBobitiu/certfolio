@@ -17,6 +17,12 @@ export const metadata: Metadata = {
   ],
 }
 
+const foundationSignals = [
+  "Issuer-led credential identity",
+  "Verified links and profile records kept distinct",
+  "Built to expand into richer detail editing next",
+] as const
+
 export default async function CredentialsPage() {
   const session = await getCurrentSession()
   const credentials = session
@@ -70,9 +76,74 @@ export default async function CredentialsPage() {
         .orderBy(IssuersTable.display_name)
     : []
 
+  const hasCredentials = credentials.length > 0
+
   return (
     <div className="relative overflow-hidden">
       <div className="absolute inset-x-0 top-0 -z-10 h-112 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.16),transparent_38%),radial-gradient(circle_at_top_right,rgba(14,116,144,0.14),transparent_28%),linear-gradient(180deg,rgba(71,85,105,0.08),transparent_78%)]" />
+
+      {hasCredentials ? (
+        <section className="relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/50 px-6 py-6 shadow-lg sm:px-8 sm:py-7 dark:border-white/8 dark:from-background dark:via-card/25 dark:to-card/35 dark:shadow-white/2">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl space-y-3">
+              <div className="inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground backdrop-blur">
+                Credentials Workspace
+              </div>
+              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-balance sm:text-4xl">
+                Shape a stronger body of verified professional identity.
+              </h2>
+              <p className="text-sm leading-7 text-muted-foreground sm:text-base">
+                Use this index to review private drafts, revisit public
+                credentials, and keep issuer-led proof aligned with the
+                professional identity you want Certfolio to present.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 lg:max-w-md lg:justify-end">
+              {foundationSignals.map((signal) => (
+                <div
+                  key={signal}
+                  className="rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm text-foreground/85 backdrop-blur dark:border-white/8 dark:bg-white/3"
+                >
+                  {signal}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="relative rounded-4xl border border-border/70 bg-linear-to-br from-card via-card to-secondary/55 px-6 py-8 shadow-lg sm:px-8 sm:py-10 lg:px-10 lg:py-12 dark:border-white/8 dark:from-background dark:via-card/30 dark:to-card/40 dark:shadow-white/2">
+          <div className="max-w-3xl space-y-6">
+            <div className="inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground backdrop-blur">
+              Credentials Workspace
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="max-w-2xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
+                Structure credentials around issuer identity and proof.
+              </h2>
+              <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                Certfolio credentials are meant to hold more than a title and a
+                badge. This workspace is being structured for issuer-led
+                presentation, verification-aware proof, and future profile
+                reuse.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {foundationSignals.map((signal) => (
+                <div
+                  key={signal}
+                  className="rounded-full border border-border/70 bg-card/88 px-4 py-2 text-sm text-foreground/85 backdrop-blur dark:border-white/8 dark:bg-white/3"
+                >
+                  {signal}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <CredentialsWorkspace
         initialCredentials={credentials.map((credential) => ({
           id: credential.id,
