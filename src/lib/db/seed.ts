@@ -1,5 +1,5 @@
 import { hash } from "@node-rs/argon2"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { config } from "dotenv"
 import { pathToFileURL } from "node:url"
 import {
@@ -8,6 +8,7 @@ import {
 } from "./credentials/issuer-normalization"
 import {
   client,
+  CredentialsTable,
   IssuersTable,
   db,
   ProjectEvidenceLinksTable,
@@ -107,6 +108,54 @@ const demoProjects = [
         kind: "case_study" as const,
       },
     ],
+  },
+] as const
+
+const demoCredentials = [
+  {
+    slug: "aws-solutions-architect-associate",
+    title: "AWS Certified Solutions Architect - Associate",
+    issuerSlug: "amazon-web-services",
+    source_type: "credly" as const,
+    verification_status: "verified_external" as const,
+    credential_code: "AWS-SAA-2026-DEMO",
+    verification_url: "https://www.credly.com/badges/demo-aws-solutions-architect",
+    certificate_asset_key: "",
+    issued_on: new Date("2025-05-01T00:00:00.000Z"),
+    expires_on: new Date("2028-05-01T00:00:00.000Z"),
+    summary:
+      "Validates practical AWS architecture knowledge across secure, resilient, and cost-aware cloud solution design.",
+    status: "published" as const,
+  },
+  {
+    slug: "comptia-security-plus",
+    title: "CompTIA Security+",
+    issuerSlug: "comptia",
+    source_type: "issuer_link" as const,
+    verification_status: "linked_external" as const,
+    credential_code: "SECPLUS-DEMO-601",
+    verification_url: "https://www.comptia.org/certifications/security",
+    certificate_asset_key: "",
+    issued_on: new Date("2024-10-01T00:00:00.000Z"),
+    expires_on: new Date("2027-10-01T00:00:00.000Z"),
+    summary:
+      "Shows baseline security operations, risk, and defensive practice knowledge suitable for hands-on infrastructure and security work.",
+    status: "published" as const,
+  },
+  {
+    slug: "azure-fundamentals",
+    title: "Microsoft Certified: Azure Fundamentals",
+    issuerSlug: "microsoft",
+    source_type: "manual" as const,
+    verification_status: "self_declared" as const,
+    credential_code: "AZ-900-DEMO",
+    verification_url: "",
+    certificate_asset_key: "",
+    issued_on: new Date("2023-09-01T00:00:00.000Z"),
+    expires_on: null,
+    summary:
+      "Covers core Azure concepts, cloud service models, pricing fundamentals, and identity/security basics.",
+    status: "draft" as const,
   },
 ] as const
 
@@ -389,6 +438,14 @@ export async function seedDatabase(options: SeedOptions = {}) {
 
     console.log("✓ Seed issuers ready")
 
+    const issuerRows = await db
+      .select({ id: IssuersTable.id, slug: IssuersTable.slug })
+      .from(IssuersTable)
+
+    const issuerIdBySlug = new Map(
+      issuerRows.map((issuer) => [issuer.slug, issuer.id])
+    )
+
     const [existingAdmin] = await db
       .select({ id: UsersTable.id })
       .from(UsersTable)
@@ -485,6 +542,67 @@ export async function seedDatabase(options: SeedOptions = {}) {
     }
 
     console.log("✓ Demo admin projects seeded")
+
+    for (const credential of demoCredentials) {
+      const issuerId = issuerIdBySlug.get(credential.issuerSlug)
+
+      if (!issuerId) {
+        throw new Error(
+          `Missing seeded issuer for demo credential: ${credential.issuerSlug}`
+        )
+      }
+
+      const [existingCredential] = await db
+        .select({ id: CredentialsTable.id })
+        .from(CredentialsTable)
+        .where(
+          and(
+            eq(CredentialsTable.user_id, adminId),
+            eq(CredentialsTable.slug, credential.slug)
+          )
+        )
+        .limit(1)
+
+      if (existingCredential) {
+        await db
+          .update(CredentialsTable)
+          .set({
+            issuer_id: issuerId,
+            title: credential.title,
+            source_type: credential.source_type,
+            verification_status: credential.verification_status,
+            credential_code: credential.credential_code,
+            verification_url: credential.verification_url,
+            certificate_asset_key: credential.certificate_asset_key,
+            issued_on: credential.issued_on,
+            expires_on: credential.expires_on,
+            summary: credential.summary,
+            status: credential.status,
+            updated_at: new Date(),
+          })
+          .where(eq(CredentialsTable.id, existingCredential.id))
+
+        continue
+      }
+
+      await db.insert(CredentialsTable).values({
+        user_id: adminId,
+        issuer_id: issuerId,
+        slug: credential.slug,
+        title: credential.title,
+        source_type: credential.source_type,
+        verification_status: credential.verification_status,
+        credential_code: credential.credential_code,
+        verification_url: credential.verification_url,
+        certificate_asset_key: credential.certificate_asset_key,
+        issued_on: credential.issued_on,
+        expires_on: credential.expires_on,
+        summary: credential.summary,
+        status: credential.status,
+      })
+    }
+
+    console.log("✓ Demo admin credentials seeded")
     console.log("✓ Database seeded successfully")
   } catch (error) {
     console.error("Error seeding database:", error)
