@@ -432,19 +432,13 @@ export const deleteCredentialAction = actionClient
       return { failure: "Credential not found" }
     }
 
-    if (existingCredential.certificateAssetKey) {
-      try {
-        await deleteCredentialAsset(existingCredential.certificateAssetKey)
-      } catch {
-        return {
-          failure: "We could not delete the certificate file right now.",
-        }
-      }
-    }
-
     await db
-      .delete(CredentialsTable)
+      .update(CredentialsTable)
+      .set({
+        status: "archived",
+        updated_at: new Date(),
+      })
       .where(eq(CredentialsTable.id, existingCredential.id))
 
-    return { success: "Credential deleted" }
+    return { success: "Credential removed from workspace" }
   })

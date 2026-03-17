@@ -271,7 +271,7 @@ export function CredentialDetailForm({
           return
         }
 
-        toast.success("Credential deleted")
+        toast.success("Credential removed from workspace")
         router.push("/credentials")
       },
       onError: ({ error }) => {
@@ -476,15 +476,16 @@ export function CredentialDetailForm({
                 className="rounded-full"
               >
                 <Trash2 className="size-4" />
-                Delete credential
+                Remove from workspace
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete this credential?</AlertDialogTitle>
+                <AlertDialogTitle>Remove this credential?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently remove the credential and any uploaded
-                  certificate file. This action cannot be undone.
+                  This will hide the credential from your workspace and keep it
+                  out of the public surface. You can still retain the record
+                  internally.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -494,7 +495,7 @@ export function CredentialDetailForm({
                   disabled={isBusy}
                   onClick={() => deleteCredential({ slug: formState.slug })}
                 >
-                  Delete credential
+                  Remove credential
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -829,7 +830,6 @@ export function CredentialDetailForm({
                     ).toISOString()
                   : credential.issuedOn
               }
-              sourceType={formState.sourceType}
               verificationStatus={formState.verificationStatus}
             />
           </div>
