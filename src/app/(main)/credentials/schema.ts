@@ -1,16 +1,17 @@
 import * as z from "zod/v4"
 
-export const createCredentialSchema = z
+const monthPrecisionSchema = z.string().regex(/^\d{4}-\d{2}$/)
+
+const credentialBaseSchema = z
   .object({
     title: z.string().trim().min(1, "Credential title is required"),
     issuerId: z.string().trim().optional().default(""),
     customIssuerName: z.string().trim().optional().default(""),
-    issuedOn: z
-      .string()
-      .regex(/^\d{4}-\d{2}$/, "Issue date is required"),
+    issuedOn: monthPrecisionSchema,
     expiresOn: z.string().trim().optional().default(""),
     verificationUrl: z.string().trim().optional().default(""),
     verificationCode: z.string().trim().optional().default(""),
+    certificateAssetKey: z.string().trim().optional().default(""),
     summary: z.string().trim().optional().default(""),
   })
   .superRefine((value, ctx) => {
@@ -33,7 +34,7 @@ export const createCredentialSchema = z
       }
     }
 
-    if (value.expiresOn.trim() && !/^\d{4}-\d{2}$/.test(value.expiresOn.trim())) {
+    if (value.expiresOn.trim() && !monthPrecisionSchema.safeParse(value.expiresOn.trim()).success) {
       ctx.addIssue({
         code: "custom",
         path: ["expiresOn"],
@@ -50,4 +51,22 @@ export const createCredentialSchema = z
     }
   })
 
+export const createCredentialSchema = credentialBaseSchema.extend({
+  issuedOn: monthPrecisionSchema,
+})
+
 export type CreateCredentialInput = z.input<typeof createCredentialSchema>
+
+export const updateCredentialSchema = credentialBaseSchema.extend({
+  slug: z.string().trim().min(1, "Credential slug is required"),
+  issuedOn: monthPrecisionSchema,
+  status: z.enum(["draft", "published", "archived"]),
+})
+
+export type UpdateCredentialInput = z.input<typeof updateCredentialSchema>
+
+export const deleteCredentialSchema = z.object({
+  slug: z.string().trim().min(1, "Credential slug is required"),
+})
+
+export type DeleteCredentialInput = z.input<typeof deleteCredentialSchema>

@@ -13,8 +13,13 @@ import {
   normalizeIssuerName,
 } from "@/lib/db/credentials/issuer-normalization"
 import { actionClient } from "@/lib/safe-action"
+import { deleteCredentialAsset } from "@/lib/storage/r2"
 
-import { createCredentialSchema } from "./schema"
+import {
+  createCredentialSchema,
+  deleteCredentialSchema,
+  updateCredentialSchema,
+} from "./schema"
 
 function slugify(value: string) {
   return value
@@ -25,12 +30,21 @@ function slugify(value: string) {
     .replace(/-{2,}/g, "-")
 }
 
-function deriveCredentialSource(verificationUrl: string) {
+function deriveCredentialState({
+  verificationUrl,
+  certificateAssetKey,
+}: {
+  verificationUrl: string
+  certificateAssetKey: string
+}) {
   const trimmedUrl = verificationUrl.trim()
+  const trimmedCertificateKey = certificateAssetKey.trim()
 
   if (!trimmedUrl) {
     return {
-      sourceType: "manual" as const,
+      sourceType: trimmedCertificateKey
+        ? ("uploaded_certificate" as const)
+        : ("manual" as const),
       verificationStatus: "self_declared" as const,
     }
   }
@@ -65,6 +79,36 @@ function deriveCredentialSource(verificationUrl: string) {
 
 function parseIssuedMonth(value: string) {
   return new Date(`${value}-01T00:00:00.000Z`)
+}
+
+function serializeCredentialDates<
+  T extends {
+    issuedOn: Date
+    expiresOn?: Date | null
+  },
+>(credential: T) {
+  return {
+    ...credential,
+    issuedOn: credential.issuedOn.toISOString(),
+    expiresOn: credential.expiresOn ? credential.expiresOn.toISOString() : null,
+  }
+}
+
+function selectCredentialShape() {
+  return {
+    id: CredentialsTable.id,
+    slug: CredentialsTable.slug,
+    title: CredentialsTable.title,
+    sourceType: CredentialsTable.source_type,
+    verificationStatus: CredentialsTable.verification_status,
+    issuedOn: CredentialsTable.issued_on,
+    expiresOn: CredentialsTable.expires_on,
+    verificationUrl: CredentialsTable.verification_url,
+    verificationCode: CredentialsTable.credential_code,
+    certificateAssetKey: CredentialsTable.certificate_asset_key,
+    summary: CredentialsTable.summary,
+    status: CredentialsTable.status,
+  }
 }
 
 async function generateUniqueCredentialSlug(userId: string, title: string) {
@@ -218,9 +262,10 @@ export const createCredentialAction = actionClient
         parsedInput.title
       )
 
-      const { sourceType, verificationStatus } = deriveCredentialSource(
-        parsedInput.verificationUrl
-      )
+      const { sourceType, verificationStatus } = deriveCredentialState({
+        verificationUrl: parsedInput.verificationUrl,
+        certificateAssetKey: "",
+      })
 
       const [credential] = await db
         .insert(CredentialsTable)
@@ -242,23 +287,11 @@ export const createCredentialAction = actionClient
           status: "draft",
           updated_at: new Date(),
         })
-        .returning({
-          id: CredentialsTable.id,
-          slug: CredentialsTable.slug,
-          title: CredentialsTable.title,
-          sourceType: CredentialsTable.source_type,
-          verificationStatus: CredentialsTable.verification_status,
-          issuedOn: CredentialsTable.issued_on,
-          summary: CredentialsTable.summary,
-          status: CredentialsTable.status,
-        })
+        .returning(selectCredentialShape())
 
       return {
         success: "Credential created",
-        credential: {
-          ...credential,
-          issuedOn: credential.issuedOn.toISOString(),
-        },
+        credential: serializeCredentialDates(credential),
         issuer: {
           id: issuer.id,
           displayName: issuer.displayName,
@@ -276,4 +309,142 @@ export const createCredentialAction = actionClient
 
       return { failure: "We could not create the credential right now." }
     }
+  })
+
+export const updateCredentialAction = actionClient
+  .inputSchema(updateCredentialSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) {
+      return { failure: "Unauthorized" }
+    }
+
+    const [existingCredential] = await db
+      .select({
+        id: CredentialsTable.id,
+        certificateAssetKey: CredentialsTable.certificate_asset_key,
+      })
+      .from(CredentialsTable)
+      .where(
+        and(
+          eq(CredentialsTable.user_id, session.user.id),
+          eq(CredentialsTable.slug, parsedInput.slug)
+        )
+      )
+      .limit(1)
+
+    if (!existingCredential) {
+      return { failure: "Credential not found" }
+    }
+
+    try {
+      const issuer = await resolveCredentialIssuer({
+        userId: session.user.id,
+        issuerId: parsedInput.issuerId.trim(),
+        customIssuerName: parsedInput.customIssuerName.trim(),
+      })
+
+      const certificateAssetKey = parsedInput.certificateAssetKey.trim()
+      const { sourceType, verificationStatus } = deriveCredentialState({
+        verificationUrl: parsedInput.verificationUrl,
+        certificateAssetKey,
+      })
+
+      const [credential] = await db
+        .update(CredentialsTable)
+        .set({
+          issuer_id: issuer.id,
+          title: parsedInput.title.trim(),
+          source_type: sourceType,
+          verification_status: verificationStatus,
+          credential_code: parsedInput.verificationCode.trim(),
+          verification_url: parsedInput.verificationUrl.trim(),
+          certificate_asset_key: certificateAssetKey,
+          issued_on: parseIssuedMonth(parsedInput.issuedOn),
+          expires_on: parsedInput.expiresOn
+            ? parseIssuedMonth(parsedInput.expiresOn)
+            : null,
+          summary: parsedInput.summary.trim(),
+          status: parsedInput.status,
+          updated_at: new Date(),
+        })
+        .where(eq(CredentialsTable.id, existingCredential.id))
+        .returning(selectCredentialShape())
+
+      if (
+        existingCredential.certificateAssetKey &&
+        existingCredential.certificateAssetKey !== certificateAssetKey
+      ) {
+        try {
+          await deleteCredentialAsset(existingCredential.certificateAssetKey)
+        } catch {
+          return {
+            failure: "Credential saved, but the old certificate file could not be removed.",
+          }
+        }
+      }
+
+      return {
+        success: "Credential updated",
+        credential: serializeCredentialDates(credential),
+        issuer: {
+          id: issuer.id,
+          displayName: issuer.displayName,
+          normalizedName: issuer.normalizedName,
+          aliases: issuer.aliases,
+          kind: issuer.kind,
+          themeKey: issuer.themeKey,
+          logoUrl: issuer.logoUrl,
+        },
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        return { failure: error.message }
+      }
+
+      return { failure: "We could not update the credential right now." }
+    }
+  })
+
+export const deleteCredentialAction = actionClient
+  .inputSchema(deleteCredentialSchema)
+  .action(async ({ parsedInput }) => {
+    const session = await getCurrentSession()
+    if (!session) {
+      return { failure: "Unauthorized" }
+    }
+
+    const [existingCredential] = await db
+      .select({
+        id: CredentialsTable.id,
+        certificateAssetKey: CredentialsTable.certificate_asset_key,
+      })
+      .from(CredentialsTable)
+      .where(
+        and(
+          eq(CredentialsTable.user_id, session.user.id),
+          eq(CredentialsTable.slug, parsedInput.slug)
+        )
+      )
+      .limit(1)
+
+    if (!existingCredential) {
+      return { failure: "Credential not found" }
+    }
+
+    if (existingCredential.certificateAssetKey) {
+      try {
+        await deleteCredentialAsset(existingCredential.certificateAssetKey)
+      } catch {
+        return {
+          failure: "We could not delete the certificate file right now.",
+        }
+      }
+    }
+
+    await db
+      .delete(CredentialsTable)
+      .where(eq(CredentialsTable.id, existingCredential.id))
+
+    return { success: "Credential deleted" }
   })

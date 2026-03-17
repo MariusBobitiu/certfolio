@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import type { Route } from "next"
 import { useState } from "react"
 import { Plus } from "lucide-react"
 import { useAction } from "next-safe-action/hooks"
@@ -396,16 +398,21 @@ export function CredentialsWorkspace({
           {filteredCredentials.length > 0 ? (
             <div className="mt-6 grid gap-4 xl:grid-cols-3">
               {filteredCredentials.map((credential) => (
-                <CredentialCardPreview
+                <Link
                   key={credential.id}
-                  issuerDisplayName={credential.issuer.displayName}
-                  issuerThemeKey={credential.issuer.themeKey}
-                  title={credential.title}
-                  issuedOn={credential.issuedOn}
-                  sourceType={credential.sourceType}
-                  status={credential.status}
-                  verificationStatus={credential.verificationStatus}
-                />
+                  href={`/credentials/${credential.slug}` as Route}
+                >
+                  <CredentialCardPreview
+                    issuerDisplayName={credential.issuer.displayName}
+                    issuerThemeKey={credential.issuer.themeKey}
+                    title={credential.title}
+                    issuedOn={credential.issuedOn}
+                    sourceType={credential.sourceType}
+                    status={credential.status}
+                    verificationStatus={credential.verificationStatus}
+                    className="transition-transform duration-150 hover:-translate-y-0.5"
+                  />
+                </Link>
               ))}
             </div>
           ) : (
