@@ -17,6 +17,7 @@ export const userPreferencesTable = pgTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     accent_colour: text("accent_colour").default("blue").notNull(),
+    bio: text("bio").default("").notNull(),
     public_profile: boolean("public_profile").default(true).notNull(),
     searchable: boolean("searchable").default(true).notNull(),
     show_email: boolean("show_email").default(false).notNull(),
