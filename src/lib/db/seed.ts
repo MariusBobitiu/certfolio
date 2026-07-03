@@ -10,6 +10,8 @@ import {
   client,
   CredentialsTable,
   IssuersTable,
+  UserLinksTable,
+  UserPreferencesTable,
   db,
   ProjectEvidenceLinksTable,
   ProjectsTable,
@@ -119,7 +121,8 @@ const demoCredentials = [
     source_type: "credly" as const,
     verification_status: "verified_external" as const,
     credential_code: "AWS-SAA-2026-DEMO",
-    verification_url: "https://www.credly.com/badges/demo-aws-solutions-architect",
+    verification_url:
+      "https://www.credly.com/badges/demo-aws-solutions-architect",
     certificate_asset_key: "",
     issued_on: new Date("2025-05-01T00:00:00.000Z"),
     expires_on: new Date("2028-05-01T00:00:00.000Z"),
@@ -254,11 +257,7 @@ const seededIssuers = [
     slug: "red-hat",
     display_name: "Red Hat",
     normalized_name: normalizeIssuerName("Red Hat"),
-    aliases: normalizeIssuerAliases([
-      "Red Hat",
-      "RedHat",
-      "Red Hat Software",
-    ]),
+    aliases: normalizeIssuerAliases(["Red Hat", "RedHat", "Red Hat Software"]),
     website_url: "https://www.redhat.com",
     logo_url: "",
     theme_key: "red-hat",
@@ -332,10 +331,7 @@ const seededIssuers = [
     slug: "oracle",
     display_name: "Oracle",
     normalized_name: normalizeIssuerName("Oracle"),
-    aliases: normalizeIssuerAliases([
-      "Oracle",
-      "Oracle Corporation",
-    ]),
+    aliases: normalizeIssuerAliases(["Oracle", "Oracle Corporation"]),
     website_url: "https://www.oracle.com",
     logo_url: "",
     theme_key: "oracle",
@@ -370,11 +366,7 @@ const seededIssuers = [
     slug: "pearson-vue",
     display_name: "Pearson VUE",
     normalized_name: normalizeIssuerName("Pearson VUE"),
-    aliases: normalizeIssuerAliases([
-      "Pearson VUE",
-      "PearsonVue",
-      "Pearson",
-    ]),
+    aliases: normalizeIssuerAliases(["Pearson VUE", "PearsonVue", "Pearson"]),
     website_url: "https://home.pearsonvue.com",
     logo_url: "",
     theme_key: "pearson-vue",
@@ -391,7 +383,7 @@ const seededIssuers = [
     website_url: "https://www.tcm-sec.com",
     logo_url: "",
     theme_key: "tcm-security",
-  }
+  },
 ] as const
 
 export async function seedDatabase(options: SeedOptions = {}) {
@@ -475,6 +467,101 @@ export async function seedDatabase(options: SeedOptions = {}) {
       console.log("✓ Admin user already exists")
     }
 
+    // Seed preferences
+    const [existingPrefs] = await db
+      .select({ id: UserPreferencesTable.id })
+      .from(UserPreferencesTable)
+      .where(eq(UserPreferencesTable.user_id, adminId))
+      .limit(1)
+
+    if (!existingPrefs) {
+      await db.insert(UserPreferencesTable).values({
+        user_id: adminId,
+        accent_colour: "#3b82f6",
+        headline: "Engineering leader & full-stack developer",
+        bio: "Building tools that help professionals own their credentials. Previously led platform engineering at multiple startups. Passionate about verification, trust, and developer experience.",
+        public_profile: true,
+        featured_credential_ids: [],
+        featured_project_ids: [],
+      })
+      console.log("✓ Admin preferences seeded")
+    } else {
+      await db
+        .update(UserPreferencesTable)
+        .set({
+          accent_colour: "#3b82f6",
+          headline: "Engineering leader & full-stack developer",
+          bio: "Building tools that help professionals own their credentials. Previously led platform engineering at multiple startups. Passionate about verification, trust, and developer experience.",
+          public_profile: true,
+        })
+        .where(eq(UserPreferencesTable.user_id, adminId))
+      console.log("✓ Admin preferences updated")
+    }
+
+    // Seed demo links
+    const [existingLink] = await db
+      .select({ id: UserLinksTable.id })
+      .from(UserLinksTable)
+      .where(eq(UserLinksTable.user_id, adminId))
+      .limit(1)
+
+    if (!existingLink) {
+      await db.insert(UserLinksTable).values([
+        {
+          user_id: adminId,
+          platform: "website",
+          label: "Website",
+          url: "https://admin.dev",
+          sort_order: 0,
+        },
+        {
+          user_id: adminId,
+          platform: "github",
+          label: "GitHub",
+          url: "https://github.com/admin",
+          sort_order: 1,
+        },
+        {
+          user_id: adminId,
+          platform: "linkedin",
+          label: "LinkedIn",
+          url: "https://linkedin.com/in/admin",
+          sort_order: 2,
+        },
+      ])
+      console.log("✓ Admin demo links seeded")
+    } else {
+      // Update existing demo links to add platform column
+      await db
+        .update(UserLinksTable)
+        .set({ platform: "website" })
+        .where(
+          and(
+            eq(UserLinksTable.user_id, adminId),
+            eq(UserLinksTable.label, "Website")
+          )
+        )
+      await db
+        .update(UserLinksTable)
+        .set({ platform: "github" })
+        .where(
+          and(
+            eq(UserLinksTable.user_id, adminId),
+            eq(UserLinksTable.label, "GitHub")
+          )
+        )
+      await db
+        .update(UserLinksTable)
+        .set({ platform: "linkedin" })
+        .where(
+          and(
+            eq(UserLinksTable.user_id, adminId),
+            eq(UserLinksTable.label, "LinkedIn")
+          )
+        )
+      console.log("✓ Admin demo links updated")
+    }
+
     for (const project of demoProjects) {
       const [existingProject] = await db
         .select({ id: ProjectsTable.id })
@@ -515,18 +602,21 @@ export async function seedDatabase(options: SeedOptions = {}) {
         continue
       }
 
-      const [insertedProject] = await db.insert(ProjectsTable).values({
-        user_id: adminId,
-        slug: project.slug,
-        title: project.title,
-        summary: project.summary,
-        context: project.context,
-        outcome: project.outcome,
-        tools: project.tools,
-        project_type: project.project_type,
-        role: project.role,
-        status: project.status,
-      }).returning({ id: ProjectsTable.id })
+      const [insertedProject] = await db
+        .insert(ProjectsTable)
+        .values({
+          user_id: adminId,
+          slug: project.slug,
+          title: project.title,
+          summary: project.summary,
+          context: project.context,
+          outcome: project.outcome,
+          tools: project.tools,
+          project_type: project.project_type,
+          role: project.role,
+          status: project.status,
+        })
+        .returning({ id: ProjectsTable.id })
 
       if (project.evidenceLinks.length > 0) {
         await db.insert(ProjectEvidenceLinksTable).values(

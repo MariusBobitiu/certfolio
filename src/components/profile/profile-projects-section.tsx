@@ -9,14 +9,22 @@ export function ProfileProjectsSection({
 }) {
   if (projects.length === 0) return null
 
+  const evidenceCount = projects.reduce(
+    (total, project) => total + project.evidence.length,
+    0
+  )
+
   return (
     <section className="space-y-5">
-      <ProfileSectionHeader label="Projects" count={projects.length} />
-      <div className="flex flex-col gap-4">
+      <ProfileSectionHeader
+        label="Projects"
+        subtitle={`${projects.length} published project${projects.length === 1 ? "" : "s"} · ${evidenceCount} evidence link${evidenceCount === 1 ? "" : "s"}`}
+      />
+      <div className="max-w-7xl mx-auto flex flex-col gap-4">
         {projects.map((project) => (
           <ProjectCardPreview
             key={project.id}
-            eyebrow="Project"
+            eyebrow=""
             title={project.title}
             summary={project.summary}
             coverImageUrl={project.cover_image_url}

@@ -1,23 +1,32 @@
-'use client'
+"use client"
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useTheme } from 'next-themes'
-import { useRef } from 'react'
-import { ChevronDown, LogOut, Menu, Monitor, Moon, Settings, Sun, X } from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useTheme } from "next-themes"
+import { useRef } from "react"
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuSub,
-	DropdownMenuSubContent,
-	DropdownMenuSubTrigger,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  ChevronDown,
+  LogOut,
+  Menu,
+  Monitor,
+  Moon,
+  Settings,
+  Sun,
+  X,
+} from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Sheet,
   SheetClose,
@@ -25,28 +34,28 @@ import {
   SheetDescription,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
-import { AuthSession } from '@/lib/auth/session-core'
+} from "@/components/ui/sheet"
+import { AuthSession } from "@/lib/auth/session-core"
 
 const navItems = [
-	{ href: '/dashboard', label: 'Dashboard' },
-	{ href: '/credentials', label: 'Credentials' },
-	{ href: '/projects', label: 'Projects' },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/credentials", label: "Credentials" },
+  { href: "/projects", label: "Projects" },
 ] as const
 
 const mobilePrimaryItems = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/profile', label: 'Profile' },
-  { href: '/projects', label: 'Projects' },
-  { href: '/credentials', label: 'Credentials' },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/profile", label: "Profile" },
+  { href: "/projects", label: "Projects" },
+  { href: "/credentials", label: "Credentials" },
 ] as const
 
 export function Navbar({ session }: { session: AuthSession }) {
-	const pathname = usePathname()
-	const { setTheme, theme } = useTheme()
-	const signOutFormRef = useRef<HTMLFormElement>(null)
+  const pathname = usePathname()
+  const { setTheme, theme } = useTheme()
+  const signOutFormRef = useRef<HTMLFormElement>(null)
 
-	return (
+  return (
     <nav className="fixed top-0 right-0 left-0 z-50 p-3 sm:px-6 sm:py-5">
       <div className="mx-auto max-w-7xl">
         {/* Backdrop blur container */}

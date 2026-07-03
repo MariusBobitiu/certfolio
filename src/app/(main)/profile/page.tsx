@@ -1,21 +1,24 @@
-import { Metadata } from 'next'
-import React from 'react'
+import { Metadata } from "next"
+import { redirect } from "next/navigation"
+
+import { getCurrentSession } from "@/lib/auth/session"
+import { getProfileManagementData } from "@/data/profile-management"
+import { ProfileWorkspace } from "@/components/profile/profile-workspace"
 
 export const metadata: Metadata = {
-	title: 'Profile - Certfolio',
-	description: 'Manage your profile information and settings on Certfolio.',
-	authors: [{
-		name: 'Marius Bobitiu',
-		url: 'https://mariusbobitiu.dev',
-	}]
+  title: "Profile — Certfolio",
+  description:
+    "Curate your public Certfolio profile. Manage your identity, featured credentials, and projects.",
 }
 
-export default function ProfilePage() {
-	return (
-		<div>
-			<h1 className="text-3xl font-bold">Profile</h1>
-			<p className="mt-4 text-gray-600">Manage your account information and settings here.</p>
-			{/* Add account management content here */}
-		</div>
-	)
+export default async function ProfilePage() {
+  const session = await getCurrentSession()
+
+  if (!session) {
+    redirect("/sign-in")
+  }
+
+  const data = await getProfileManagementData(session.user.id)
+
+  return <ProfileWorkspace data={data} />
 }

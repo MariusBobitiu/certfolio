@@ -1,6 +1,5 @@
 "use server"
 
-import { eq } from "drizzle-orm"
 import { actionClient } from "@/lib/safe-action"
 import { getCurrentSession } from "@/lib/auth/session"
 import { db, UserPreferencesTable } from "@/lib/db/drizzle"

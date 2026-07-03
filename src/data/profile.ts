@@ -8,6 +8,7 @@ import {
   IssuersTable,
   ProjectEvidenceLinksTable,
   ProjectsTable,
+  UserLinksTable,
   UserPreferencesTable,
   UsersTable,
 } from "@/lib/db/drizzle"
@@ -43,6 +44,13 @@ export type PublicProject = {
   }>
 }
 
+export type PublicLink = {
+  id: string
+  platform: string
+  label: string
+  url: string
+}
+
 export type PublicProfileData =
   | {
       isPrivate: true
@@ -55,8 +63,10 @@ export type PublicProfileData =
         public_profile: boolean
         show_email: boolean
         bio: string
+        headline: string
         accent_colour: string
       }
+      links: PublicLink[]
       credentials: PublicCredential[]
       projects: PublicProject[]
     }
@@ -81,7 +91,15 @@ export async function getPublicProfileData(
   if (!user || !user.slug) return null
 
   const [prefs] = await db
-    .select()
+    .select({
+      public_profile: UserPreferencesTable.public_profile,
+      show_email: UserPreferencesTable.show_email,
+      bio: UserPreferencesTable.bio,
+      headline: UserPreferencesTable.headline,
+      accent_colour: UserPreferencesTable.accent_colour,
+      featured_credential_ids: UserPreferencesTable.featured_credential_ids,
+      featured_project_ids: UserPreferencesTable.featured_project_ids,
+    })
     .from(UserPreferencesTable)
     .where(eq(UserPreferencesTable.user_id, user.id))
     .limit(1)
@@ -93,6 +111,18 @@ export async function getPublicProfileData(
       user: { name: user.name, image: user.image, slug: user.slug },
     }
   }
+
+  // Fetch public links
+  const links = await db
+    .select({
+      id: UserLinksTable.id,
+      platform: UserLinksTable.platform,
+      label: UserLinksTable.label,
+      url: UserLinksTable.url,
+    })
+    .from(UserLinksTable)
+    .where(eq(UserLinksTable.user_id, user.id))
+    .orderBy(UserLinksTable.sort_order)
 
   // Fetch published credentials with issuer join, newest first
   const rawCredentials = await db
@@ -127,6 +157,36 @@ export async function getPublicProfileData(
       theme_key: c.issuer_theme_key,
     },
   }))
+
+  // Apply featured ordering if set, otherwise sort by tier then date
+  const featuredCredIds = prefs.featured_credential_ids?.filter(Boolean) ?? []
+  if (featuredCredIds.length > 0) {
+    const lookup = new Map(credentials.map((c) => [c.id, c]))
+    const ordered = featuredCredIds
+      .map((id) => lookup.get(id))
+      .filter((c): c is PublicCredential => c !== undefined)
+    // Fallback: append any credentials not in featured list (though featured should be exhaustive for published creds)
+    for (const c of credentials) {
+      if (!featuredCredIds.includes(c.id)) {
+        ordered.push(c)
+      }
+    }
+    // Reassign (const array, so replace contents)
+    credentials.length = 0
+    credentials.push(...ordered)
+  } else {
+    // Default sort: verified first, then linked, then self-declared
+    const TIER_ORDER: Record<string, number> = {
+      verified_external: 0,
+      linked_external: 1,
+      self_declared: 2,
+    }
+    credentials.sort(
+      (a, b) =>
+        (TIER_ORDER[a.verification_status] ?? 3) -
+        (TIER_ORDER[b.verification_status] ?? 3)
+    )
+  }
 
   // Fetch published projects, newest first
   const rawProjects = await db
@@ -184,6 +244,22 @@ export async function getPublicProfileData(
     })
   )
 
+  // Apply featured ordering for projects if set, otherwise keep date order
+  const featuredProjIds = prefs.featured_project_ids?.filter(Boolean) ?? []
+  if (featuredProjIds.length > 0) {
+    const lookup = new Map(projects.map((p) => [p.id, p]))
+    const ordered = featuredProjIds
+      .map((id) => lookup.get(id))
+      .filter((p): p is PublicProject => p !== undefined)
+    for (const p of projects) {
+      if (!featuredProjIds.includes(p.id)) {
+        ordered.push(p)
+      }
+    }
+    projects.length = 0
+    projects.push(...ordered)
+  }
+
   return {
     isPrivate: false,
     user: {
@@ -196,8 +272,15 @@ export async function getPublicProfileData(
       public_profile: prefs.public_profile,
       show_email: prefs.show_email,
       bio: prefs.bio,
+      headline: prefs.headline ?? "",
       accent_colour: prefs.accent_colour,
     },
+    links: links.map((l) => ({
+      id: l.id,
+      platform: l.platform,
+      label: l.label,
+      url: l.url,
+    })),
     credentials,
     projects,
   }

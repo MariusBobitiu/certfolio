@@ -30,13 +30,24 @@ export function CredentialCardPreview({
   verificationStatus: "verified_external" | "linked_external" | "self_declared"
   className?: string
 }) {
-  const theme = getIssuerTheme(issuerThemeKey)
+  const effectiveTheme =
+    verificationStatus === "self_declared"
+      ? getIssuerTheme("fallback")
+      : getIssuerTheme(issuerThemeKey)
+
+  const tierRing =
+    verificationStatus === "verified_external"
+      ? "ring-2 ring-emerald-400/40 dark:ring-emerald-500/30"
+      : verificationStatus === "linked_external"
+        ? "ring-1 ring-sky-400/25 dark:ring-sky-500/20"
+        : ""
 
   return (
     <article
       className={cn(
         "relative flex h-full flex-col overflow-hidden rounded-[28px] border shadow-lg",
-        theme.cardClassName,
+        effectiveTheme.cardClassName,
+        tierRing,
         className
       )}
     >
@@ -48,7 +59,7 @@ export function CredentialCardPreview({
             <div
               className={cn(
                 "flex size-16 shrink-0 items-center justify-center rounded-2xl border text-base font-semibold tracking-[-0.03em]",
-                theme.logoClassName
+                effectiveTheme.logoClassName
               )}
             >
               {getIssuerInitials(issuerDisplayName)}
@@ -68,7 +79,7 @@ export function CredentialCardPreview({
         <div className="flex flex-wrap gap-2">
           <CredentialVerificationBadge
             status={verificationStatus}
-            className={theme.badgeClassName}
+            className={effectiveTheme.badgeClassName}
           />
           {/* <div className="inline-flex items-center gap-2 rounded-full bg-black/12 px-3 py-1 text-[11px] font-semibold tracking-[0.14em] text-white/80 uppercase ring-1 ring-white/10">
             {credentialSourceLabels[sourceType]}
@@ -81,6 +92,11 @@ export function CredentialCardPreview({
           <CalendarDays className="size-4" />
           Issued {formatIssuedOn(issuedOn)}
         </div>
+        {verificationStatus === "self_declared" && (
+          <span className="text-[10px] text-muted-foreground">
+            Self-declared
+          </span>
+        )}
       </div>
     </article>
   )

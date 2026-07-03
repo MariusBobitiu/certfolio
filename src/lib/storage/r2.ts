@@ -136,3 +136,30 @@ export async function deleteCredentialAsset(key: string) {
     })
   )
 }
+
+export async function uploadProfileImage({
+  userId,
+  file,
+}: {
+  userId: string
+  file: File
+}) {
+  const extension = extname(file.name) || ".jpg"
+  const safeName =
+    sanitizeFileName(file.name.replace(extension, "")) || "avatar"
+  const key = `profiles/${userId}/avatar-${Date.now()}-${randomUUID()}-${safeName}${extension}`
+  const body = Buffer.from(await file.arrayBuffer())
+
+  await r2Client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: file.type || "application/octet-stream",
+    })
+  )
+
+  const url = await getProjectAssetUrl(key)
+
+  return { key, url }
+}

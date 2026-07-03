@@ -104,7 +104,11 @@ export function getMaskedEmail(email: string) {
 }
 
 function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3000"
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_URL ??
+    "http://localhost:3000"
+  )
 }
 
 function buildVerificationUrl(token: string) {
@@ -146,14 +150,18 @@ async function createVerificationRecord(userId: string, email: string) {
   return token
 }
 
-export async function sendEmailVerification(params: SendEmailVerificationParams) {
+export async function sendEmailVerification(
+  params: SendEmailVerificationParams
+) {
   const token = await createVerificationRecord(params.userId, params.email)
   const verificationUrl = buildVerificationUrl(token)
 
   const apiKey = process.env.RESEND_API_KEY
 
   if (!apiKey) {
-    console.warn("RESEND_API_KEY is missing. Email verification message was not sent.")
+    console.warn(
+      "RESEND_API_KEY is missing. Email verification message was not sent."
+    )
     return
   }
 
@@ -183,6 +191,7 @@ export async function sendEmailVerification(params: SendEmailVerificationParams)
   })
 
   if (error) {
+    console.error(error)
     throw new Error(error.message)
   }
 }
@@ -289,13 +298,17 @@ export async function setPendingEmailVerificationCookie(params: {
 export async function clearPendingEmailVerificationCookie() {
   const cookieStore = await cookies()
 
-  cookieStore.set(RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(0),
-  })
+  cookieStore.set(
+    RATE_LIMIT_CONFIG.EMAIL_VERIFICATION.PENDING_COOKIE_NAME,
+    "",
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(0),
+    }
+  )
 }
 
 export async function getPendingEmailVerificationCookie() {

@@ -1,6 +1,6 @@
 import type { Route } from "next"
 import Link from "next/link"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight, Link2, ShieldCheck } from "lucide-react"
 
 import { CustomBadge } from "@/components/projects/custom-badge"
 import { cn } from "@/lib/utils"
@@ -64,48 +64,56 @@ export function ProjectCardPreview({
     return (
       <article
         className={cn(
-          "group overflow-hidden rounded-3xl border border-border/70 bg-linear-to-br from-secondary/45 via-card to-primary/5 p-4 transition-colors hover:border-border/90 dark:border-white/8 dark:from-secondary/25 dark:via-card/35 dark:to-primary/10",
+          "group relative overflow-hidden rounded-4xl border border-border bg-gradient-to-br from-card via-card to-secondary/30 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30",
           className
         )}
       >
-        <div className="h-full grid gap-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-stretch">
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/60 dark:border-white/8">
+        <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+        <div className="h-full grid gap-4 md:grid-cols-[190px_minmax(0,1fr)] md:items-stretch">
+          <div className="overflow-hidden rounded-3xl border border-border bg-card">
             {coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={coverImageUrl}
                 alt={`${title} cover`}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
               />
             ) : (
-              <div className="flex h-full min-h-40 items-end bg-linear-to-br from-primary/20 via-secondary/30 to-card p-4">
+              <div className="flex h-full min-h-40 items-end bg-gradient-to-br from-primary/10 via-secondary/40 to-card p-4">
                 <p className="text-[11px] font-semibold tracking-[0.22em] text-muted-foreground uppercase">
-                  No cover
+                  Evidence-backed work
                 </p>
               </div>
             )}
           </div>
 
           <div className="flex min-w-0 flex-1 h-full flex-col justify-between">
-            <div className="flex-1 flex flex-col gap-1">
+            <div className="flex-1 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
-                {href ? (
-                  <Link
-                    href={href}
-                    className="line-clamp-2 block text-base font-semibold tracking-[-0.02em] text-foreground transition-opacity hover:opacity-80 sm:text-xl"
-                  >
-                    {title}
-                  </Link>
-                ) : (
-                  <h3 className="line-clamp-2 block text-base font-semibold tracking-[-0.02em] text-foreground sm:text-xl">
-                    {title}
-                  </h3>
-                )}
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+                    <ShieldCheck className="size-3.5 text-primary" />
+                    Proof-backed project
+                  </div>
+
+                  {href ? (
+                    <Link
+                      href={href}
+                      className="line-clamp-2 block text-base font-semibold tracking-[-0.03em] text-foreground transition-opacity hover:opacity-80 sm:text-[1.75rem]"
+                    >
+                      {title}
+                    </Link>
+                  ) : (
+                    <h3 className="line-clamp-2 block text-base font-semibold tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
+                      {title}
+                    </h3>
+                  )}
+                </div>
 
                 <ProjectStatusBadge status={status} className="shrink-0" />
               </div>
-              <div className="flex-1 min-h-16 mt-2">
-                <p className="flex-1 line-clamp-2 max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">
+              <div className="flex-1 min-h-16">
+                <p className="flex-1 line-clamp-3 max-w-3xl text-sm leading-7 text-muted-foreground">
                   {summary}
                 </p>
               </div>
@@ -121,8 +129,9 @@ export function ProjectCardPreview({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 mt-2 pt-0.5 dark:border-white/8">
-              <p className="text-xs leading-6 text-foreground/75">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4 dark:border-white/8">
+              <p className="inline-flex items-center gap-2 text-xs leading-6 font-medium text-foreground/75">
+                <Link2 className="size-3.5 text-primary" />
                 {proofSummary ?? "No evidence yet"}
               </p>
 

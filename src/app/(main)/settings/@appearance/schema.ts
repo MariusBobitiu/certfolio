@@ -11,7 +11,7 @@ export const ACCENT_COLOURS = [
 ] as const
 
 export const updateAppearanceSchema = z.object({
-  accent_colour: z.enum(ACCENT_COLOURS),
+  accent_colour: z.string().min(1),
 })
 
 export type UpdateAppearanceInput = z.input<typeof updateAppearanceSchema>

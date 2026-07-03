@@ -17,11 +17,20 @@ export const userPreferencesTable = pgTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     accent_colour: text("accent_colour").default("blue").notNull(),
+    headline: text("headline").default("").notNull(),
     bio: text("bio").default("").notNull(),
     public_profile: boolean("public_profile").default(true).notNull(),
     searchable: boolean("searchable").default(true).notNull(),
     show_email: boolean("show_email").default(false).notNull(),
     full_metadata: boolean("full_metadata").default(true).notNull(),
+    featured_credential_ids: text("featured_credential_ids")
+      .array()
+      .default([])
+      .notNull(),
+    featured_project_ids: text("featured_project_ids")
+      .array()
+      .default([])
+      .notNull(),
     created_at: timestamp("created_at", {
       withTimezone: true,
       mode: "date",
@@ -35,7 +44,9 @@ export const userPreferencesTable = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (prefs) => [uniqueIndex("user_preferences_user_id_unique_idx").on(prefs.user_id)]
+  (prefs) => [
+    uniqueIndex("user_preferences_user_id_unique_idx").on(prefs.user_id),
+  ]
 )
 
 export const UserPreferencesTable = userPreferencesTable
