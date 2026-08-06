@@ -1,8 +1,17 @@
 import { ShieldCheck, Sparkles, Github, Linkedin, Globe } from "lucide-react"
 import { LandingCredentialPreview } from "@/components/landing/landing-credential-preview"
-import { elena, elenaCredentials, elenaSkills, elenaLinks } from "@/data/landing-seed"
+import {
+  elena,
+  elenaCredentials,
+  elenaSkills,
+  elenaLinks,
+} from "@/data/landing-seed"
 
-const linkIcons = { github: Github, linkedin: Linkedin, website: Globe } as const
+const linkIcons = {
+  github: Github,
+  linkedin: Linkedin,
+  website: Globe,
+} as const
 
 /**
  * Landing-only cropped profile preview for the product demo section.
@@ -15,14 +24,12 @@ const linkIcons = { github: Github, linkedin: Linkedin, website: Globe } as cons
  */
 export function LandingProfilePreview({ className }: { className?: string }) {
   const verifiedCount = elenaCredentials.filter(
-    (c) => c.verificationStatus === "verified_external",
+    (c) => c.verificationStatus === "verified_external"
   ).length
 
   return (
     <div className={className}>
-      <div className="overflow-hidden rounded-4xl border border-border bg-card shadow-md">
-        <div className="h-1 bg-linear-to-r from-primary via-primary/70 to-primary/30" />
-
+      <div className="overflow-hidden rounded-4xl border border-border bg-card shadow-sm">
         <div className="p-5 sm:p-6">
           {/* Context label */}
           <div className="mb-5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.22em] text-primary uppercase">
@@ -33,7 +40,12 @@ export function LandingProfilePreview({ className }: { className?: string }) {
           {/* Identity */}
           <div className="flex items-start gap-4">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-3xl border border-border bg-linear-to-br from-primary/15 via-secondary to-card text-base font-semibold tracking-[-0.03em] text-foreground shadow-sm ring-1 ring-primary/20 sm:size-16 sm:text-lg">
-              {elena.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+              {elena.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2)}
             </div>
             <div className="min-w-0 space-y-0.5">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -47,7 +59,8 @@ export function LandingProfilePreview({ className }: { className?: string }) {
               </div>
               <p className="text-sm text-muted-foreground">{elena.role}</p>
               <p className="text-xs text-muted-foreground">
-                {verifiedCount} verified credentials · {elenaCredentials.length} credentials · {elenaSkills.length} skills
+                {verifiedCount} verified credentials · {elenaCredentials.length}{" "}
+                credentials · {elenaSkills.length} skills
               </p>
             </div>
           </div>
@@ -79,7 +92,8 @@ export function LandingProfilePreview({ className }: { className?: string }) {
               Credentials
             </h4>
             <p className="text-xs text-muted-foreground">
-              {elenaCredentials.length} credentials · {verifiedCount} independently verified
+              {elenaCredentials.length} credentials · {verifiedCount}{" "}
+              independently verified
             </p>
           </div>
 

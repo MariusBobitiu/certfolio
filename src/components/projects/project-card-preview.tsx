@@ -68,7 +68,6 @@ export function ProjectCardPreview({
           className
         )}
       >
-        <div className="absolute inset-x-10 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         <div className="grid gap-5 md:grid-cols-[minmax(220px,0.36fr)_1fr] md:items-start">
           <div className="aspect-video overflow-hidden rounded-2xl border border-border bg-muted p-3">
             {coverImageUrl ? (

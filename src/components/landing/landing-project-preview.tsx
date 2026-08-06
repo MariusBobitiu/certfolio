@@ -46,16 +46,16 @@ export function LandingProjectPreview({
   return (
     <article
       className={cn(
-        "flex flex-col gap-3 overflow-hidden rounded-[28px] border border-border bg-linear-to-br from-card via-card to-secondary/30 p-4 shadow-md dark:border-white/8 dark:from-card dark:to-white/3",
-        className,
+        "flex flex-col gap-3 overflow-hidden rounded-3xl border border-border/70 bg-card p-4 shadow-sm dark:border-white/8",
+        className
       )}
     >
       {/* Status + proof badge */}
       <div className="flex flex-wrap items-center gap-1.5">
         <span
           className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]",
-            statusClass[status],
+            "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] uppercase",
+            statusClass[status]
           )}
         >
           {statusLabel[status]}
@@ -100,7 +100,7 @@ export function LandingProjectPreview({
 
       {/* Stack */}
       {stackPreview && (
-        <p className="text-[10px] font-medium text-foreground/75 line-clamp-1">
+        <p className="line-clamp-1 text-[10px] font-medium text-foreground/75">
           {stackPreview}
         </p>
       )}

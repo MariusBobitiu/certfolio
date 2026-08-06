@@ -8,11 +8,8 @@ export function FinalCTA() {
     <section className="bg-secondary/30 px-5 py-24 sm:px-6 sm:py-32 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <ShieldCheck className="size-5 text-primary" />
-            </div>
-            <div className="h-px flex-1 bg-border" />
+          <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+            <ShieldCheck className="size-5 text-primary" />
           </div>
 
           <h2 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl">

@@ -30,19 +30,19 @@ export function LandingCandidateSummary({
   return (
     <article
       className={cn(
-        "flex flex-col overflow-hidden rounded-[28px] border border-border bg-card p-4 shadow-md dark:border-white/8",
-        className,
+        "flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card p-4 shadow-sm sm:p-5 dark:border-white/8",
+        className
       )}
     >
       <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
         Candidate summary
       </p>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid flex-1 grid-cols-2 gap-2.5">
         {metrics.map(({ icon: Icon, label, value }) => (
           <div
             key={label}
-            className="rounded-2xl border border-border bg-secondary/30 p-3 dark:border-white/8 dark:bg-white/4"
+            className="flex flex-col justify-between rounded-2xl border border-border/70 bg-secondary/30 p-3 dark:border-white/8 dark:bg-white/4"
           >
             <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
               <Icon className="size-3" />
