@@ -669,7 +669,7 @@ export function ProjectDetailForm({
                     <img
                       src={formState.coverImageUrl}
                       alt={`${formState.title || "Project"} cover`}
-                      className="aspect-[16/9] w-full rounded-[1.25rem] bg-secondary/40 object-contain"
+                      className="aspect-video w-full rounded-[1.25rem] bg-secondary/40 object-contain"
                     />
                     <div className="flex items-center justify-between gap-3 px-2 pb-2">
                       <p className="text-sm leading-6 text-muted-foreground">

@@ -51,7 +51,7 @@ function ProjectImage({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-4xl border border-border bg-linear-to-br from-primary/[0.06] to-card",
+        "overflow-hidden rounded-4xl border border-border bg-linear-to-br from-primary/6 to-card",
         className
       )}
     >
@@ -60,10 +60,10 @@ function ProjectImage({
         <img
           src={project.cover_image_url}
           alt={`${project.title} cover image`}
-          className="aspect-[16/9] max-h-[560px] w-full object-contain"
+          className="aspect-video max-h-140 w-full object-contain"
         />
       ) : (
-        <div className="flex aspect-[16/9] max-h-[560px] w-full flex-col justify-between bg-gradient-to-br from-primary/10 via-secondary/45 to-card p-5 sm:p-8">
+        <div className="flex aspect-video max-h-140 w-full flex-col justify-between bg-linear-to-br from-primary/10 via-secondary/45 to-card p-5 sm:p-8">
           <div className="grid grid-cols-3 gap-2 opacity-75 sm:gap-3">
             <span className="h-14 rounded-2xl border border-border/70 bg-card/70 sm:h-20 sm:rounded-3xl" />
             <span className="h-14 rounded-2xl border border-border/70 bg-card/45 sm:h-20 sm:rounded-3xl" />
@@ -153,7 +153,7 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
         {label}
       </p>
-      <p className="mt-1 text-sm font-medium break-words text-foreground sm:text-base">
+      <p className="mt-1 text-sm font-medium wrap-break-word text-foreground sm:text-base">
         {value}
       </p>
     </div>
@@ -277,7 +277,7 @@ export function ProjectEvidenceList({
                       <span className="inline-flex rounded-full bg-card px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
                         {evidenceKindLabels[item.kind] ?? "Evidence"}
                       </span>
-                      <h3 className="text-base font-semibold tracking-[-0.02em] break-words text-foreground">
+                      <h3 className="text-base font-semibold tracking-[-0.02em] wrap-break-word text-foreground">
                         {item.label}
                       </h3>
                       <p className="text-sm break-all text-muted-foreground">

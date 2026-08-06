@@ -64,13 +64,13 @@ export function ProjectCardPreview({
     return (
       <article
         className={cn(
-          "group relative overflow-hidden rounded-4xl border border-border bg-gradient-to-br from-card via-card to-secondary/30 p-4 transition-all focus-within:border-primary/40 hover:-translate-y-0.5 hover:border-primary/30",
+          "group relative overflow-hidden rounded-4xl border border-border bg-linear-to-br from-card via-card to-secondary/30 p-4 transition-all focus-within:border-primary/40 hover:-translate-y-0.5 hover:border-primary/30",
           className
         )}
       >
-        <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+        <div className="absolute inset-x-10 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         <div className="grid gap-5 md:grid-cols-[minmax(220px,0.36fr)_1fr] md:items-start">
-          <div className="aspect-[16/10] overflow-hidden rounded-2xl border border-border bg-muted p-3">
+          <div className="aspect-video overflow-hidden rounded-2xl border border-border bg-muted p-3">
             {coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -79,7 +79,7 @@ export function ProjectCardPreview({
                 className="size-full object-contain"
               />
             ) : (
-              <div className="flex size-full flex-col justify-between bg-gradient-to-br from-primary/10 via-secondary/40 to-card p-2">
+              <div className="flex size-full flex-col justify-between bg-linear-to-br from-primary/10 via-secondary/40 to-card p-2">
                 <div className="grid grid-cols-3 gap-1.5 opacity-60">
                   <span className="h-8 rounded-xl border border-border/70 bg-card/60" />
                   <span className="h-8 rounded-xl border border-border/70 bg-card/40" />
@@ -160,7 +160,7 @@ export function ProjectCardPreview({
     >
       <div className="space-y-4">
         {coverImageUrl ? (
-          <div className="aspect-[16/10] overflow-hidden rounded-2xl border border-border/60 bg-muted p-3 dark:border-white/8">
+          <div className="aspect-16/10 overflow-hidden rounded-2xl border border-border/60 bg-muted p-3 dark:border-white/8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImageUrl}
