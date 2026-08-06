@@ -64,73 +64,72 @@ export function ProjectCardPreview({
     return (
       <article
         className={cn(
-          "group relative overflow-hidden rounded-4xl border border-border bg-gradient-to-br from-card via-card to-secondary/30 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30",
+          "group relative overflow-hidden rounded-4xl border border-border bg-gradient-to-br from-card via-card to-secondary/30 p-4 transition-all focus-within:border-primary/40 hover:-translate-y-0.5 hover:border-primary/30",
           className
         )}
       >
         <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-        <div className="h-full grid gap-4 md:grid-cols-[190px_minmax(0,1fr)] md:items-stretch">
-          <div className="overflow-hidden rounded-3xl border border-border bg-card">
+        <div className="grid gap-5 md:grid-cols-[minmax(220px,0.36fr)_1fr] md:items-start">
+          <div className="aspect-[16/10] overflow-hidden rounded-2xl border border-border bg-muted p-3">
             {coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={coverImageUrl}
                 alt={`${title} cover`}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                className="size-full object-contain"
               />
             ) : (
-              <div className="flex h-full min-h-40 items-end bg-gradient-to-br from-primary/10 via-secondary/40 to-card p-4">
-                <p className="text-[11px] font-semibold tracking-[0.22em] text-muted-foreground uppercase">
-                  Evidence-backed work
+              <div className="flex size-full flex-col justify-between bg-gradient-to-br from-primary/10 via-secondary/40 to-card p-2">
+                <div className="grid grid-cols-3 gap-1.5 opacity-60">
+                  <span className="h-8 rounded-xl border border-border/70 bg-card/60" />
+                  <span className="h-8 rounded-xl border border-border/70 bg-card/40" />
+                  <span className="h-8 rounded-xl border border-border/70 bg-card/60" />
+                </div>
+                <p className="text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+                  No cover
                 </p>
               </div>
             )}
           </div>
 
-          <div className="flex min-w-0 flex-1 h-full flex-col justify-between">
-            <div className="flex-1 flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1 text-[10px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
-                    <ShieldCheck className="size-3.5 text-primary" />
-                    Proof-backed project
-                  </div>
-
-                  {href ? (
-                    <Link
-                      href={href}
-                      className="line-clamp-2 block text-base font-semibold tracking-[-0.03em] text-foreground transition-opacity hover:opacity-80 sm:text-[1.75rem]"
-                    >
-                      {title}
-                    </Link>
-                  ) : (
-                    <h3 className="line-clamp-2 block text-base font-semibold tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
-                      {title}
-                    </h3>
-                  )}
-                </div>
-
-                <ProjectStatusBadge status={status} className="shrink-0" />
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/40 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                <ShieldCheck className="size-3 text-primary" />
+                Proof-backed project
               </div>
-              <div className="flex-1 min-h-16">
-                <p className="flex-1 line-clamp-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-                  {summary}
-                </p>
-              </div>
-
-              {metadataLine ? (
-                <p className="line-clamp-1 text-muted-foreground text-sm">
-                  {metadataLine}
-                </p>
-              ) : null}
-
-              <p className="line-clamp-1 text-sm font-medium text-foreground/85">
-                {stackPreview || "Project stack not added yet"}
-              </p>
+              <ProjectStatusBadge status={status} />
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4 dark:border-white/8">
-              <p className="inline-flex items-center gap-2 text-xs leading-6 font-medium text-foreground/75">
+            {href ? (
+              <Link
+                href={href}
+                className="line-clamp-2 rounded-sm text-base font-semibold tracking-[-0.03em] text-foreground transition-opacity hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:text-[1.75rem]"
+              >
+                {title}
+              </Link>
+            ) : (
+              <h3 className="line-clamp-2 text-base font-semibold tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
+                {title}
+              </h3>
+            )}
+
+            <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+              {summary}
+            </p>
+
+            {metadataLine ? (
+              <p className="line-clamp-1 text-sm text-muted-foreground">
+                {metadataLine}
+              </p>
+            ) : null}
+
+            <p className="line-clamp-1 text-sm font-medium text-foreground/85">
+              {stackPreview || "Project stack not added yet"}
+            </p>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 dark:border-white/8">
+              <p className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground/75">
                 <Link2 className="size-3.5 text-primary" />
                 {proofSummary ?? "No evidence yet"}
               </p>
@@ -138,9 +137,9 @@ export function ProjectCardPreview({
               {href ? (
                 <Link
                   href={href}
-                  className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                 >
-                  Open project
+                  View case study
                   <ArrowUpRight className="size-4" />
                 </Link>
               ) : null}
@@ -161,12 +160,12 @@ export function ProjectCardPreview({
     >
       <div className="space-y-4">
         {coverImageUrl ? (
-          <div className="aspect-square overflow-hidden rounded-2xl border border-border/60 bg-card/60 dark:border-white/8">
+          <div className="aspect-[16/10] overflow-hidden rounded-2xl border border-border/60 bg-muted p-3 dark:border-white/8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImageUrl}
               alt={`${title} cover`}
-              className="h-full w-full object-cover"
+              className="size-full object-contain"
             />
           </div>
         ) : null}

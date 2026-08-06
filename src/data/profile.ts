@@ -44,6 +44,16 @@ export type PublicProject = {
   }>
 }
 
+export type PublicProjectCaseStudy = PublicProject & {
+  status: "published"
+  accent_colour: string
+  owner: {
+    name: string
+    image: string
+    slug: string
+  }
+}
+
 export type PublicLink = {
   id: string
   platform: string
@@ -112,39 +122,49 @@ export async function getPublicProfileData(
     }
   }
 
-  // Fetch public links
-  const links = await db
-    .select({
-      id: UserLinksTable.id,
-      platform: UserLinksTable.platform,
-      label: UserLinksTable.label,
-      url: UserLinksTable.url,
-    })
-    .from(UserLinksTable)
-    .where(eq(UserLinksTable.user_id, user.id))
-    .orderBy(UserLinksTable.sort_order)
-
-  // Fetch published credentials with issuer join, newest first
-  const rawCredentials = await db
-    .select({
-      id: CredentialsTable.id,
-      title: CredentialsTable.title,
-      issued_on: CredentialsTable.issued_on,
-      verification_status: CredentialsTable.verification_status,
-      verification_url: CredentialsTable.verification_url,
-      issuer_display_name: IssuersTable.display_name,
-      issuer_theme_key: IssuersTable.theme_key,
-    })
-    .from(CredentialsTable)
-    .innerJoin(IssuersTable, eq(CredentialsTable.issuer_id, IssuersTable.id))
-    .where(
-      and(
-        eq(CredentialsTable.user_id, user.id),
-        eq(CredentialsTable.status, "published")
+  const [links, rawCredentials, rawProjects] = await Promise.all([
+    db
+      .select({
+        id: UserLinksTable.id,
+        platform: UserLinksTable.platform,
+        label: UserLinksTable.label,
+        url: UserLinksTable.url,
+      })
+      .from(UserLinksTable)
+      .where(eq(UserLinksTable.user_id, user.id))
+      .orderBy(UserLinksTable.sort_order),
+    db
+      .select({
+        id: CredentialsTable.id,
+        title: CredentialsTable.title,
+        issued_on: CredentialsTable.issued_on,
+        verification_status: CredentialsTable.verification_status,
+        verification_url: CredentialsTable.verification_url,
+        issuer_display_name: IssuersTable.display_name,
+        issuer_theme_key: IssuersTable.theme_key,
+      })
+      .from(CredentialsTable)
+      .innerJoin(IssuersTable, eq(CredentialsTable.issuer_id, IssuersTable.id))
+      .where(
+        and(
+          eq(CredentialsTable.user_id, user.id),
+          eq(CredentialsTable.status, "published")
+        )
       )
-    )
-    .orderBy(desc(CredentialsTable.issued_on))
-    .limit(12)
+      .orderBy(desc(CredentialsTable.issued_on))
+      .limit(12),
+    db
+      .select()
+      .from(ProjectsTable)
+      .where(
+        and(
+          eq(ProjectsTable.user_id, user.id),
+          eq(ProjectsTable.status, "published")
+        )
+      )
+      .orderBy(desc(ProjectsTable.updated_at))
+      .limit(6),
+  ])
 
   const credentials: PublicCredential[] = rawCredentials.map((c) => ({
     id: c.id,
@@ -162,12 +182,13 @@ export async function getPublicProfileData(
   const featuredCredIds = prefs.featured_credential_ids?.filter(Boolean) ?? []
   if (featuredCredIds.length > 0) {
     const lookup = new Map(credentials.map((c) => [c.id, c]))
+    const featuredCredIdSet = new Set(featuredCredIds)
     const ordered = featuredCredIds
       .map((id) => lookup.get(id))
       .filter((c): c is PublicCredential => c !== undefined)
     // Fallback: append any credentials not in featured list (though featured should be exhaustive for published creds)
     for (const c of credentials) {
-      if (!featuredCredIds.includes(c.id)) {
+      if (!featuredCredIdSet.has(c.id)) {
         ordered.push(c)
       }
     }
@@ -188,19 +209,6 @@ export async function getPublicProfileData(
     )
   }
 
-  // Fetch published projects, newest first
-  const rawProjects = await db
-    .select()
-    .from(ProjectsTable)
-    .where(
-      and(
-        eq(ProjectsTable.user_id, user.id),
-        eq(ProjectsTable.status, "published")
-      )
-    )
-    .orderBy(desc(ProjectsTable.updated_at))
-    .limit(6)
-
   // Fetch evidence links for all projects in one query
   const projectIds = rawProjects.map((p) => p.id)
   const allEvidence =
@@ -212,13 +220,23 @@ export async function getPublicProfileData(
           .orderBy(ProjectEvidenceLinksTable.sort_order)
       : []
 
+  const evidenceByProjectId = new Map<
+    string,
+    Array<{ kind: string; label: string; url: string }>
+  >()
+  for (const evidence of allEvidence) {
+    const projectEvidence = evidenceByProjectId.get(evidence.project_id) ?? []
+    projectEvidence.push({
+      kind: evidence.kind,
+      label: evidence.label,
+      url: evidence.url,
+    })
+    evidenceByProjectId.set(evidence.project_id, projectEvidence)
+  }
+
   // Build projects with their evidence, resolving cover image URLs
   const projects: PublicProject[] = await Promise.all(
     rawProjects.map(async (p) => {
-      const evidence = allEvidence
-        .filter((e) => e.project_id === p.id)
-        .map((e) => ({ kind: e.kind, label: e.label, url: e.url }))
-
       let cover_image_url: string | null = null
       if (p.cover_image_key) {
         try {
@@ -239,7 +257,7 @@ export async function getPublicProfileData(
         tools: p.tools,
         project_type: p.project_type,
         role: p.role,
-        evidence,
+        evidence: evidenceByProjectId.get(p.id) ?? [],
       }
     })
   )
@@ -248,11 +266,12 @@ export async function getPublicProfileData(
   const featuredProjIds = prefs.featured_project_ids?.filter(Boolean) ?? []
   if (featuredProjIds.length > 0) {
     const lookup = new Map(projects.map((p) => [p.id, p]))
+    const featuredProjIdSet = new Set(featuredProjIds)
     const ordered = featuredProjIds
       .map((id) => lookup.get(id))
       .filter((p): p is PublicProject => p !== undefined)
     for (const p of projects) {
-      if (!featuredProjIds.includes(p.id)) {
+      if (!featuredProjIdSet.has(p.id)) {
         ordered.push(p)
       }
     }
@@ -283,5 +302,100 @@ export async function getPublicProfileData(
     })),
     credentials,
     projects,
+  }
+}
+
+export async function getPublicProjectData({
+  profileSlug,
+  projectSlug,
+}: {
+  profileSlug: string
+  projectSlug: string
+}): Promise<PublicProjectCaseStudy | null> {
+  const sanitizedProfileSlug = profileSlug.replace(/[^a-zA-Z0-9_-]/g, "")
+  const sanitizedProjectSlug = projectSlug.replace(/[^a-zA-Z0-9_-]/g, "")
+
+  if (!sanitizedProfileSlug || !sanitizedProjectSlug) {
+    return null
+  }
+
+  const [row] = await db
+    .select({
+      user_id: UsersTable.id,
+      user_name: UsersTable.name,
+      user_image: UsersTable.image,
+      user_slug: UsersTable.slug,
+      public_profile: UserPreferencesTable.public_profile,
+      accent_colour: UserPreferencesTable.accent_colour,
+      project_id: ProjectsTable.id,
+      project_slug: ProjectsTable.slug,
+      title: ProjectsTable.title,
+      cover_image_key: ProjectsTable.cover_image_key,
+      summary: ProjectsTable.summary,
+      context: ProjectsTable.context,
+      outcome: ProjectsTable.outcome,
+      tools: ProjectsTable.tools,
+      project_type: ProjectsTable.project_type,
+      role: ProjectsTable.role,
+      status: ProjectsTable.status,
+    })
+    .from(UsersTable)
+    .innerJoin(
+      UserPreferencesTable,
+      eq(UserPreferencesTable.user_id, UsersTable.id)
+    )
+    .innerJoin(ProjectsTable, eq(ProjectsTable.user_id, UsersTable.id))
+    .where(
+      and(
+        eq(UsersTable.slug, sanitizedProfileSlug),
+        eq(UserPreferencesTable.public_profile, true),
+        eq(ProjectsTable.slug, sanitizedProjectSlug),
+        eq(ProjectsTable.status, "published")
+      )
+    )
+    .limit(1)
+
+  if (!row || !row.user_slug || row.status !== "published") {
+    return null
+  }
+
+  const evidenceRows = await db
+    .select({
+      kind: ProjectEvidenceLinksTable.kind,
+      label: ProjectEvidenceLinksTable.label,
+      url: ProjectEvidenceLinksTable.url,
+    })
+    .from(ProjectEvidenceLinksTable)
+    .where(eq(ProjectEvidenceLinksTable.project_id, row.project_id))
+    .orderBy(ProjectEvidenceLinksTable.sort_order)
+
+  let cover_image_url: string | null = null
+  if (row.cover_image_key) {
+    try {
+      cover_image_url = await getProjectAssetUrl(row.cover_image_key)
+    } catch {
+      cover_image_url = null
+    }
+  }
+
+  return {
+    id: row.project_id,
+    slug: row.project_slug,
+    title: row.title,
+    summary: row.summary,
+    cover_image_url,
+    context: row.context,
+    outcome: row.outcome,
+    tools: row.tools,
+    project_type: row.project_type,
+    role: row.role,
+    status: "published",
+    accent_colour: row.accent_colour ?? "#3b82f6",
+    evidence: evidenceRows,
+    owner: {
+      name: row.user_name,
+      image: row.user_image,
+      slug: row.user_slug,
+    },
   }
 }

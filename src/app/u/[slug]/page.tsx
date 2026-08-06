@@ -15,23 +15,22 @@ interface ProfilePageProps {
   params: Promise<{ slug: string }>
 }
 
+const brandmark = (
+  <div className="flex justify-center py-8">
+    <Link
+      href="/"
+      className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase transition-opacity hover:opacity-70"
+    >
+      Certfolio
+    </Link>
+  </div>
+)
+
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { slug } = await params
   const data = await getPublicProfileData(slug)
 
   if (!data) notFound()
-
-  // Minimal Certfolio wordmark shown on all states
-  const brandmark = (
-    <div className="flex justify-center py-8">
-      <Link
-        href="/"
-        className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase transition-opacity hover:opacity-70"
-      >
-        Certfolio
-      </Link>
-    </div>
-  )
 
   if (data.isPrivate) {
     return (
@@ -216,7 +215,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
             <ProfileCredentialsSection credentials={credentials} />
 
-            <ProfileProjectsSection projects={projects} />
+            <ProfileProjectsSection
+              projects={projects}
+              profileSlug={user.slug}
+            />
 
             <ProfileCtaSection
               email={user.email}

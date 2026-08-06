@@ -1,18 +1,19 @@
 "use server"
 
-import { and, eq, sql } from "drizzle-orm"
+import { and, count, eq, sql } from "drizzle-orm"
 
 import { getCurrentSession } from "@/lib/auth/session"
 import {
   CredentialsTable,
   db,
   IssuersTable,
+  ProjectEvidenceLinksTable,
   ProjectsTable,
   UserLinksTable,
   UserPreferencesTable,
   UsersTable,
 } from "@/lib/db/drizzle"
-import { uploadProfileImage } from "@/lib/storage/r2"
+import { getProjectAssetUrl, uploadProfileImage } from "@/lib/storage/r2"
 import { slugAvailabilitySchema } from "@/lib/validations/profile"
 import type { ProfileFormData } from "@/lib/validations/profile"
 
@@ -30,6 +31,13 @@ export type PublishedProjectForPicker = {
   id: string
   title: string
   project_type: string
+  cover_image_url: string | null
+  summary: string
+  role: string
+  tools: string
+  context: string
+  outcome: string
+  evidence_count: number
 }
 
 export type ProfileManagementData = {
@@ -121,20 +129,57 @@ export async function getProfileManagementData(
     )
     .orderBy(CredentialsTable.issued_on)
 
-  const publishedProjects = await db
+  const publishedProjectsRows = await db
     .select({
       id: ProjectsTable.id,
       title: ProjectsTable.title,
       project_type: ProjectsTable.project_type,
+      cover_image_key: ProjectsTable.cover_image_key,
+      summary: ProjectsTable.summary,
+      role: ProjectsTable.role,
+      tools: ProjectsTable.tools,
+      context: ProjectsTable.context,
+      outcome: ProjectsTable.outcome,
+      evidence_count: count(ProjectEvidenceLinksTable.id),
     })
     .from(ProjectsTable)
+    .leftJoin(
+      ProjectEvidenceLinksTable,
+      eq(ProjectEvidenceLinksTable.project_id, ProjectsTable.id)
+    )
     .where(
       and(
         eq(ProjectsTable.user_id, userId),
         eq(ProjectsTable.status, "published")
       )
     )
+    .groupBy(ProjectsTable.id)
     .orderBy(ProjectsTable.updated_at)
+
+  const publishedProjects = await Promise.all(
+    publishedProjectsRows.map(async (row) => {
+      let cover_image_url: string | null = null
+      if (row.cover_image_key) {
+        try {
+          cover_image_url = await getProjectAssetUrl(row.cover_image_key)
+        } catch {
+          cover_image_url = null
+        }
+      }
+      return {
+        id: row.id,
+        title: row.title,
+        project_type: row.project_type,
+        cover_image_url,
+        summary: row.summary,
+        role: row.role,
+        tools: row.tools,
+        context: row.context,
+        outcome: row.outcome,
+        evidence_count: row.evidence_count,
+      }
+    })
+  )
 
   return {
     user: {

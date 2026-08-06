@@ -77,15 +77,15 @@ export function ProfileFeaturedProjects({
                 <ProjectCardPreview
                   eyebrow=""
                   title={proj.title}
-                  summary=""
-                  coverImageUrl={null}
+                  summary={proj.summary}
+                  coverImageUrl={proj.cover_image_url}
                   projectType={proj.project_type}
-                  role=""
+                  role={proj.role}
                   status="published"
-                  context=""
-                  outcome=""
-                  tools=""
-                  evidenceCount={0}
+                  context={proj.context}
+                  outcome={proj.outcome}
+                  tools={proj.tools}
+                  evidenceCount={proj.evidence_count}
                   variant="listing"
                 />
                 {/* Remove button overlay */}

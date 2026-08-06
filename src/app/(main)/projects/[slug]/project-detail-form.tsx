@@ -1,8 +1,16 @@
 "use client"
 
 import { useState } from "react"
+import type { Route } from "next"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ImagePlus, LoaderCircle, Plus, Trash2 } from "lucide-react"
+import {
+  ExternalLink,
+  ImagePlus,
+  LoaderCircle,
+  Plus,
+  Trash2,
+} from "lucide-react"
 import { useAction } from "next-safe-action/hooks"
 import { useDropzone } from "react-dropzone"
 import { toast } from "sonner"
@@ -69,6 +77,8 @@ type ProjectDetailFormProps = {
     status: "draft" | "published" | "archived"
     evidenceLinks: EvidenceLinkFormState[]
   }
+  publicProjectUrl?: Route | null
+  publicProjectUnavailableReason?: string | null
 }
 
 type ProjectFormState = ProjectDetailFormProps["project"]
@@ -108,7 +118,11 @@ function createEmptyEvidenceLink(): EvidenceLinkFormState {
   }
 }
 
-export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
+export function ProjectDetailForm({
+  project,
+  publicProjectUrl,
+  publicProjectUnavailableReason,
+}: ProjectDetailFormProps) {
   const router = useRouter()
   const [formState, setFormState] = useState<ProjectFormState>(project)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -372,6 +386,36 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
           >
             Save changes
           </Button>
+          {publicProjectUrl ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full xl:shrink-0"
+              asChild
+            >
+              <Link href={publicProjectUrl}>
+                <ExternalLink className="size-4" />
+                View public project
+              </Link>
+            </Button>
+          ) : (
+            <div className="space-y-1 xl:max-w-56 xl:shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                disabled
+                className="w-full rounded-full"
+              >
+                <ExternalLink className="size-4" />
+                View public project
+              </Button>
+              {publicProjectUnavailableReason ? (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {publicProjectUnavailableReason}
+                </p>
+              ) : null}
+            </div>
+          )}
           <AlertDialog
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
@@ -625,7 +669,7 @@ export function ProjectDetailForm({ project }: ProjectDetailFormProps) {
                     <img
                       src={formState.coverImageUrl}
                       alt={`${formState.title || "Project"} cover`}
-                      className="aspect-16/10 w-full rounded-[1.25rem] object-cover"
+                      className="aspect-[16/9] w-full rounded-[1.25rem] bg-secondary/40 object-contain"
                     />
                     <div className="flex items-center justify-between gap-3 px-2 pb-2">
                       <p className="text-sm leading-6 text-muted-foreground">
