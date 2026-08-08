@@ -8,6 +8,7 @@ import {
   IssuersTable,
   ProjectEvidenceLinksTable,
   ProjectsTable,
+  SkillsTable,
   UserLinksTable,
   UserPreferencesTable,
   UsersTable,
@@ -38,6 +39,7 @@ export type PublicProject = {
   project_type: string
   role: string
   evidence: Array<{
+    id: string
     kind: string
     label: string
     url: string
@@ -61,6 +63,12 @@ export type PublicLink = {
   url: string
 }
 
+export type PublicSkill = {
+  id: string
+  name: string
+  category: string
+}
+
 export type PublicProfileData =
   | {
       isPrivate: true
@@ -77,6 +85,7 @@ export type PublicProfileData =
         accent_colour: string
       }
       links: PublicLink[]
+      skills: PublicSkill[]
       credentials: PublicCredential[]
       projects: PublicProject[]
     }
@@ -122,7 +131,7 @@ export async function getPublicProfileData(
     }
   }
 
-  const [links, rawCredentials, rawProjects] = await Promise.all([
+  const [links, skills, rawCredentials, rawProjects] = await Promise.all([
     db
       .select({
         id: UserLinksTable.id,
@@ -133,6 +142,15 @@ export async function getPublicProfileData(
       .from(UserLinksTable)
       .where(eq(UserLinksTable.user_id, user.id))
       .orderBy(UserLinksTable.sort_order),
+    db
+      .select({
+        id: SkillsTable.id,
+        name: SkillsTable.name,
+        category: SkillsTable.category,
+      })
+      .from(SkillsTable)
+      .where(eq(SkillsTable.user_id, user.id))
+      .orderBy(SkillsTable.sort_order),
     db
       .select({
         id: CredentialsTable.id,
@@ -222,11 +240,12 @@ export async function getPublicProfileData(
 
   const evidenceByProjectId = new Map<
     string,
-    Array<{ kind: string; label: string; url: string }>
+    Array<{ id: string; kind: string; label: string; url: string }>
   >()
   for (const evidence of allEvidence) {
     const projectEvidence = evidenceByProjectId.get(evidence.project_id) ?? []
     projectEvidence.push({
+      id: evidence.id,
       kind: evidence.kind,
       label: evidence.label,
       url: evidence.url,
@@ -300,6 +319,7 @@ export async function getPublicProfileData(
       label: l.label,
       url: l.url,
     })),
+    skills,
     credentials,
     projects,
   }
@@ -361,6 +381,7 @@ export async function getPublicProjectData({
 
   const evidenceRows = await db
     .select({
+      id: ProjectEvidenceLinksTable.id,
       kind: ProjectEvidenceLinksTable.kind,
       label: ProjectEvidenceLinksTable.label,
       url: ProjectEvidenceLinksTable.url,

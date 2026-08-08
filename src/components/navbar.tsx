@@ -41,12 +41,14 @@ import { AuthSession } from "@/lib/auth/session-core"
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/credentials", label: "Credentials" },
+  { href: "/skills", label: "Skills" },
   { href: "/projects", label: "Projects" },
 ] as const
 
 const mobilePrimaryItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/profile", label: "Profile" },
+  { href: "/skills", label: "Skills" },
   { href: "/projects", label: "Projects" },
   { href: "/credentials", label: "Credentials" },
 ] as const

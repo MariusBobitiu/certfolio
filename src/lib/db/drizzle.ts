@@ -5,6 +5,7 @@ import * as credentialsSchema from "@/lib/db/credentials/schema"
 import * as preferencesSchema from "@/lib/db/preferences/schema"
 import * as profileSchema from "@/lib/db/profile/schema"
 import * as projectsSchema from "@/lib/db/projects/schema"
+import * as skillsSchema from "@/lib/db/skills/schema"
 
 const connectionString = process.env.DATABASE_URL
 
@@ -22,6 +23,7 @@ const schema = {
   ...profileSchema,
   ...projectsSchema,
   ...credentialsSchema,
+  ...skillsSchema,
 }
 
 declare global {
@@ -56,6 +58,7 @@ export {
 
 export { UserPreferencesTable } from "@/lib/db/preferences/schema"
 export { UserLinksTable } from "@/lib/db/profile/schema"
+export { SkillsTable } from "@/lib/db/skills/schema"
 export {
   ProjectsTable,
   ProjectEvidenceLinksTable,
@@ -102,6 +105,7 @@ export type {
 } from "@/lib/db/preferences/schema"
 
 export type { UserLink, NewUserLink } from "@/lib/db/profile/schema"
+export type { Skill, NewSkill } from "@/lib/db/skills/schema"
 
 export type {
   Project,

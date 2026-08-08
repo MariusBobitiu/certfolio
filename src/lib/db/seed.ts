@@ -15,6 +15,7 @@ import {
   db,
   ProjectEvidenceLinksTable,
   ProjectsTable,
+  SkillsTable,
   UsersTable,
 } from "./drizzle"
 
@@ -160,6 +161,15 @@ const demoCredentials = [
       "Covers core Azure concepts, cloud service models, pricing fundamentals, and identity/security basics.",
     status: "draft" as const,
   },
+] as const
+
+const demoSkills = [
+  { name: "TypeScript", category: "technical" },
+  { name: "Next.js", category: "tools" },
+  { name: "PostgreSQL", category: "tools" },
+  { name: "Cloud architecture", category: "domain" },
+  { name: "Security operations", category: "domain" },
+  { name: "Technical leadership", category: "professional" },
 ] as const
 
 const seededIssuers = [
@@ -560,6 +570,24 @@ export async function seedDatabase(options: SeedOptions = {}) {
           )
         )
       console.log("✓ Admin demo links updated")
+    }
+
+    const [existingSkill] = await db
+      .select({ id: SkillsTable.id })
+      .from(SkillsTable)
+      .where(eq(SkillsTable.user_id, adminId))
+      .limit(1)
+
+    if (!existingSkill) {
+      await db.insert(SkillsTable).values(
+        demoSkills.map((skill, index) => ({
+          user_id: adminId,
+          name: skill.name,
+          category: skill.category,
+          sort_order: index,
+        }))
+      )
+      console.log("✓ Admin demo skills seeded")
     }
 
     for (const project of demoProjects) {

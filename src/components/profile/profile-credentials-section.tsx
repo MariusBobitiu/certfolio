@@ -30,13 +30,14 @@ export function ProfileCredentialsSection({
   if (credentials.length === 0) return null
 
   const sorted = [...credentials].sort(
-    (a, b) => TIER_ORDER[a.verification_status] - TIER_ORDER[b.verification_status]
+    (a, b) =>
+      TIER_ORDER[a.verification_status] - TIER_ORDER[b.verification_status]
   )
 
   return (
     <section className="space-y-5">
       <ProfileSectionHeader
-        label="Credentials"
+        label="Verified credentials"
         subtitle={buildCredentialSubtitle(credentials)}
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -21,7 +21,7 @@ export function ProfileProjectsSection({
   return (
     <section className="space-y-5">
       <ProfileSectionHeader
-        label="Projects"
+        label="Portfolio projects"
         subtitle={`${projects.length} published project${projects.length === 1 ? "" : "s"} · ${evidenceCount} evidence link${evidenceCount === 1 ? "" : "s"}`}
       />
       <div className="mx-auto flex max-w-7xl flex-col gap-4">

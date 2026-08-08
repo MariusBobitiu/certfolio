@@ -1,15 +1,15 @@
 import { Lock, ShieldCheck, Sparkles } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { getPublicProfileData } from "@/data/profile"
 import { ProfileAboutSection } from "@/components/profile/profile-about-section"
+import { ProfileContactSection } from "@/components/profile/profile-contact-section"
 import { ProfileCredentialsSection } from "@/components/profile/profile-credentials-section"
-import { ProfileCtaSection } from "@/components/profile/profile-cta-section"
+import { ProfileEvidenceSection } from "@/components/profile/profile-evidence-section"
 import { ProfileHero } from "@/components/profile/profile-hero"
 import { ProfileProjectsSection } from "@/components/profile/profile-projects-section"
-import { PLATFORM_ICONS, type LinkPlatform } from "@/lib/validations/profile"
+import { ProfileSkillsSection } from "@/components/profile/profile-skills-section"
 
 interface ProfilePageProps {
   params: Promise<{ slug: string }>
@@ -58,9 +58,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     )
   }
 
-  const { user, preferences, links, credentials, projects } = data
+  const { user, preferences, links, skills, credentials, projects } = data
+  const verifiedCredentials = credentials.filter(
+    (credential) => credential.verification_status !== "self_declared"
+  )
   const accentColour = preferences.accent_colour ?? "#3b82f6"
-  const hasContent = credentials.length > 0 || projects.length > 0
+  const hasContent =
+    verifiedCredentials.length > 0 || skills.length > 0 || projects.length > 0
   const evidenceCount = projects.reduce(
     (total, project) => total + project.evidence.length,
     0
@@ -68,7 +72,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
   const tagline = preferences.headline?.trim() || undefined
 
-  const verifiedCount = credentials.filter(
+  const verifiedCount = verifiedCredentials.filter(
     (c) => c.verification_status === "verified_external"
   ).length
   const trustLineParts: string[] = []
@@ -76,9 +80,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     trustLineParts.push(
       `${verifiedCount} independently verified credential${verifiedCount === 1 ? "" : "s"}`
     )
-  } else if (credentials.length > 0) {
+  } else if (verifiedCredentials.length > 0) {
     trustLineParts.push(
-      `${credentials.length} credential${credentials.length === 1 ? "" : "s"}`
+      `${verifiedCredentials.length} credential${verifiedCredentials.length === 1 ? "" : "s"}`
     )
   }
   if (projects.length > 0) {
@@ -163,7 +167,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   tagline={tagline}
                   trustLine={trustLine}
                   verifiedCount={verifiedCount}
-                  credentialCount={credentials.length}
+                  credentialCount={verifiedCredentials.length}
                   projectCount={projects.length}
                   evidenceCount={evidenceCount}
                 />
@@ -172,33 +176,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
             <ProfileAboutSection bio={preferences.bio} />
 
-            {links.length > 0 && (
-              <section className="space-y-4">
-                <h2 className="text-sm font-semibold tracking-[-0.02em] text-muted-foreground uppercase">
-                  Links
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {links.map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary"
-                    >
-                      <Image
-                        src={PLATFORM_ICONS[link.platform as LinkPlatform]}
-                        alt={link.platform}
-                        width={16}
-                        height={16}
-                        className="size-4"
-                      />
-                      <span>{link.label}</span>
-                    </a>
-                  ))}
-                </div>
-              </section>
-            )}
+            <ProfileCredentialsSection credentials={verifiedCredentials} />
+
+            <ProfileSkillsSection skills={skills} />
 
             {!hasContent && (
               <div className="rounded-3xl border border-dashed border-border bg-secondary/40 px-6 py-12 text-center">
@@ -213,16 +193,17 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               </div>
             )}
 
-            <ProfileCredentialsSection credentials={credentials} />
-
             <ProfileProjectsSection
               projects={projects}
               profileSlug={user.slug}
             />
 
-            <ProfileCtaSection
+            <ProfileEvidenceSection projects={projects} />
+
+            <ProfileContactSection
               email={user.email}
               showEmail={preferences.show_email}
+              links={links}
             />
           </div>
         </div>
