@@ -3,7 +3,10 @@ import { LandingProfilePreview } from "@/components/landing/landing-profile-prev
 
 export function ProductDemo() {
   return (
-    <section id="product" className="bg-background px-5 py-20 sm:px-6 sm:py-28 lg:px-8">
+    <section
+      id="product"
+      className="scroll-mt-16 bg-background px-5 py-20 sm:px-6 sm:py-28 lg:px-8"
+    >
       <div className="mx-auto max-w-7xl">
         <div className="grid items-start gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16 xl:gap-20">
           {/* Left: heading + supporting copy */}
@@ -15,9 +18,9 @@ export function ProductDemo() {
               One profile. A clearer professional story.
             </h2>
             <p className="mt-4 text-base leading-7 text-muted-foreground">
-              Certfolio brings your credentials, skills, projects and professional
-              links into one structured profile. Every credential and project
-              carries evidence — not just claims.
+              Certfolio brings your credentials, skills, projects and
+              professional links into one structured profile. Every credential
+              and project carries evidence — not just claims.
             </p>
 
             {/* Feature highlights */}
@@ -27,7 +30,9 @@ export function ProductDemo() {
                   <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Verified credentials</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    Verified credentials
+                  </p>
                   <p className="text-sm leading-6 text-muted-foreground">
                     Independently confirmed credentials are clearly marked, so
                     visitors can distinguish verified achievements from
@@ -41,7 +46,9 @@ export function ProductDemo() {
                   <ShieldCheck className="size-3.5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Evidence-backed projects</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    Evidence-backed projects
+                  </p>
                   <p className="text-sm leading-6 text-muted-foreground">
                     Each project carries linked evidence, context and measurable
                     outcomes — not just a title and a screenshot.
@@ -54,10 +61,12 @@ export function ProductDemo() {
                   <ShieldCheck className="size-3.5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Public visibility control</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    Public visibility control
+                  </p>
                   <p className="text-sm leading-6 text-muted-foreground">
-                    You decide when your profile is visible. Toggle between public
-                    and private at any time from a single control.
+                    You decide when your profile is visible. Toggle between
+                    public and private at any time from a single control.
                   </p>
                 </div>
               </div>

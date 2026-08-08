@@ -25,6 +25,7 @@ export type PublishedCredentialForPicker = {
   issuer_display_name: string
   issuer_theme_key: string
   verification_status: "verified_external" | "linked_external" | "self_declared"
+  issued_on: Date
 }
 
 export type PublishedProjectForPicker = {
@@ -118,6 +119,7 @@ export async function getProfileManagementData(
       issuer_display_name: IssuersTable.display_name,
       issuer_theme_key: IssuersTable.theme_key,
       verification_status: CredentialsTable.verification_status,
+      issued_on: CredentialsTable.issued_on,
     })
     .from(CredentialsTable)
     .innerJoin(IssuersTable, eq(CredentialsTable.issuer_id, IssuersTable.id))
@@ -222,6 +224,11 @@ export async function saveProfile(
   userId: string,
   data: SaveProfileInput
 ): Promise<void> {
+  const session = await getCurrentSession()
+  if (!session || session.user.id !== userId) {
+    throw new Error("Unauthorized")
+  }
+
   // Update user core fields
   await db
     .update(UsersTable)

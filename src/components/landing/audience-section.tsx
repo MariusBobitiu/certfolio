@@ -73,7 +73,10 @@ const pathways = [
 
 export function AudienceSection() {
   return (
-    <section className="bg-secondary/30 px-5 py-20 sm:px-6 sm:py-28 lg:px-8">
+    <section
+      id="audience"
+      className="scroll-mt-16 bg-secondary/30 px-5 py-20 sm:px-6 sm:py-28 lg:px-8"
+    >
       <div className="mx-auto max-w-7xl">
         <p className="text-xs font-semibold tracking-[0.24em] text-muted-foreground uppercase">
           Who it is for

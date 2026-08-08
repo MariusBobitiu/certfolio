@@ -21,8 +21,9 @@ export function ProfileFeaturedProjects({
   selectedIds,
   onChangeAction,
 }: ProfileFeaturedProjectsProps) {
-  const featured = projects.filter((p) => selectedIds.includes(p.id))
-  const unfetured = projects.filter((p) => !selectedIds.includes(p.id))
+  const selectedIdSet = new Set(selectedIds)
+  const featured = projects.filter((p) => selectedIdSet.has(p.id))
+  const unfeatured = projects.filter((p) => !selectedIdSet.has(p.id))
 
   const addItem = (id: string) => {
     if (selectedIds.length >= MAX) return
@@ -61,11 +62,11 @@ export function ProfileFeaturedProjects({
       <ProfileSectionHeader
         label="Featured projects"
         subtitle={
-          selectedIds.length > 0
-            ? `${selectedIds.length} of ${MAX} featured on your public profile`
-            : "Select projects to feature on your public profile"
+          projects.length > MAX
+            ? `Choose up to ${MAX} projects to show on your public profile.`
+            : "Choose which projects appear on your public profile."
         }
-        count={selectedIds.length > 0 ? selectedIds.length : undefined}
+        count={featured.length > 0 ? `${featured.length} featured` : undefined}
       />
 
       <div className="mt-5 space-y-8">
@@ -108,13 +109,13 @@ export function ProfileFeaturedProjects({
         )}
 
         {/* Unfeatured "add more" list */}
-        {unfetured.length > 0 && (
+        {unfeatured.length > 0 && (
           <div className="space-y-1">
             <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
               Add more
             </p>
             <div className="space-y-1">
-              {unfetured.map((proj) => (
+              {unfeatured.map((proj) => (
                 <button
                   key={proj.id}
                   type="button"

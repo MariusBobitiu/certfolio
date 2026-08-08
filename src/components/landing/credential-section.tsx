@@ -3,7 +3,10 @@ import { CredentialCardPreview } from "@/components/credentials/credential-card-
 
 export function CredentialSection() {
   return (
-    <section className="bg-background px-5 py-20 sm:px-6 sm:py-28 lg:px-8">
+    <section
+      id="credentials"
+      className="scroll-mt-16 bg-background px-5 py-20 sm:px-6 sm:py-28 lg:px-8"
+    >
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto mb-12 max-w-5xl">
           <p className="text-xs font-semibold tracking-[0.24em] text-muted-foreground uppercase">
@@ -19,7 +22,7 @@ export function CredentialSection() {
           </p>
         </div>
 
-        <div className="mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <CredentialCardPreview
             issuerDisplayName="Amazon Web Services"
             issuerThemeKey="aws"
@@ -45,7 +48,7 @@ export function CredentialSection() {
           />
         </div>
 
-        <div className="mx-auto mt-10 max-w-5xl grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="mx-auto mt-10 grid max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="flex items-start gap-3">
             <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-500/20">
               <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-300" />

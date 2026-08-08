@@ -7,7 +7,7 @@ export function ProfileSectionHeader({
   className,
 }: {
   label: string
-  count?: number
+  count?: number | string
   subtitle?: string
   className?: string
 }) {

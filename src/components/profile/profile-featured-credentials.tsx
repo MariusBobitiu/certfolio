@@ -21,8 +21,9 @@ export function ProfileFeaturedCredentials({
   selectedIds,
   onChangeAction,
 }: ProfileFeaturedCredentialsProps) {
-  const featured = credentials.filter((c) => selectedIds.includes(c.id))
-  const unfetured = credentials.filter((c) => !selectedIds.includes(c.id))
+  const selectedIdSet = new Set(selectedIds)
+  const featured = credentials.filter((c) => selectedIdSet.has(c.id))
+  const unfeatured = credentials.filter((c) => !selectedIdSet.has(c.id))
 
   const addItem = (id: string) => {
     if (selectedIds.length >= MAX) return
@@ -61,11 +62,11 @@ export function ProfileFeaturedCredentials({
       <ProfileSectionHeader
         label="Featured credentials"
         subtitle={
-          selectedIds.length > 0
-            ? `${selectedIds.length} of ${MAX} featured on your public profile`
-            : "Select credentials to feature on your public profile"
+          credentials.length > MAX
+            ? `Choose up to ${MAX} credentials to show on your public profile.`
+            : "Choose which credentials appear on your public profile."
         }
-        count={selectedIds.length > 0 ? selectedIds.length : undefined}
+        count={featured.length > 0 ? `${featured.length} featured` : undefined}
       />
 
       <div className="mt-5 space-y-8">
@@ -79,7 +80,7 @@ export function ProfileFeaturedCredentials({
                   issuerThemeKey={cred.issuer_theme_key}
                   title={cred.title}
                   verificationStatus={cred.verification_status}
-                  issuedOn={new Date().toISOString()}
+                  issuedOn={cred.issued_on.toISOString()}
                 />
                 {/* Remove button overlay */}
                 <button
@@ -101,13 +102,13 @@ export function ProfileFeaturedCredentials({
         )}
 
         {/* Unfeatured "add more" list */}
-        {unfetured.length > 0 && (
+        {unfeatured.length > 0 && (
           <div className="space-y-1">
             <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
               Add more
             </p>
             <div className="space-y-1">
-              {unfetured.map((cred) => (
+              {unfeatured.map((cred) => (
                 <button
                   key={cred.id}
                   type="button"

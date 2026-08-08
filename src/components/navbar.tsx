@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react"
 
+import { BrandMark } from "@/components/brand-mark"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -65,9 +66,7 @@ export function Navbar({ session }: { session: AuthSession }) {
             href="/dashboard"
             className="flex items-center gap-2 text-lg font-semibold transition-opacity hover:opacity-80"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-              C
-            </div>
+            <BrandMark />
             <span className="hidden sm:inline">Certfolio</span>
           </Link>
 
@@ -212,9 +211,7 @@ export function Navbar({ session }: { session: AuthSession }) {
                 <div className="border-b border-border/60 bg-linear-to-b from-muted/30 via-background to-background px-5 pt-5 pb-5">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-sm">
-                        C
-                      </div>
+                      <BrandMark className="size-11 rounded-xl p-1.5" />
                       <div>
                         <SheetTitle className="text-xl leading-tight font-semibold tracking-[-0.03em]">
                           Certfolio

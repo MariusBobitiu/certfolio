@@ -6,7 +6,10 @@ export function EvidenceSection() {
   const project = elenaProjects[0]
 
   return (
-    <section className="bg-secondary/30 px-5 py-20 sm:px-6 sm:py-28 lg:px-8">
+    <section
+      id="projects"
+      className="scroll-mt-16 bg-secondary/30 px-5 py-20 sm:px-6 sm:py-28 lg:px-8"
+    >
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto mb-12 max-w-2xl">
           <p className="text-xs font-semibold tracking-[0.24em] text-muted-foreground uppercase">
@@ -37,12 +40,20 @@ export function EvidenceSection() {
         <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/30 p-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Context</p>
-              <p className="mt-1 text-sm leading-6 text-foreground/80">{project.context}</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                Context
+              </p>
+              <p className="mt-1 text-sm leading-6 text-foreground/80">
+                {project.context}
+              </p>
             </div>
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">Outcome</p>
-              <p className="mt-1 text-sm leading-6 text-foreground/80">{project.outcome}</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                Outcome
+              </p>
+              <p className="mt-1 text-sm leading-6 text-foreground/80">
+                {project.outcome}
+              </p>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">

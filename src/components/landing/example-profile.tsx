@@ -28,7 +28,7 @@ export function ExampleProfile() {
   return (
     <section
       id="example"
-      className="bg-background px-5 py-20 sm:px-6 sm:py-28 lg:px-8"
+      className="scroll-mt-16 bg-background px-5 py-20 sm:px-6 sm:py-28 lg:px-8"
     >
       <div className="mx-auto max-w-7xl">
         <div className="mb-12">
