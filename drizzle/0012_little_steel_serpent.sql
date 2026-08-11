@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "cover_image_key" text DEFAULT '' NOT NULL;

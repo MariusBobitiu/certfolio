@@ -40,9 +40,5 @@ next-env.d.ts
 .vscode
 .vscode/*
 
-# drizzle generated files
-drizzle/*
-drizzle
-
 # git worktrees
 .worktrees
