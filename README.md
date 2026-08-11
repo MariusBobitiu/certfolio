@@ -110,6 +110,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # PostgreSQL
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/certfolio
+# For private-network databases without TLS, such as Dokploy's internal service:
+# DATABASE_SSL_MODE=disable
 
 # Generate with: openssl rand -base64 32
 MFA_TOTP_ENCRYPTION_KEY=replace-with-a-base64-encoded-32-byte-key
@@ -181,7 +183,8 @@ docker run --rm \
 The database address in `DATABASE_URL` must be reachable from inside the
 container; `localhost` refers to the container itself. Use the hostname of your
 database service, or `host.docker.internal` when connecting to a database on a
-supported host system.
+supported host system. Set `DATABASE_SSL_MODE=disable` for an internal database
+that does not offer TLS; externally hosted databases default to requiring TLS.
 
 The image runs Next.js' minimal standalone server as a non-root user and
 includes a health check. Migrations run at container startup. Demo seeding is

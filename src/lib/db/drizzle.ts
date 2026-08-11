@@ -17,6 +17,42 @@ const databaseUrl: string = connectionString
 
 const isLocalConnection = /localhost|127\.0\.0\.1/.test(databaseUrl)
 
+type DatabaseSslMode = false | "allow" | "prefer" | "require" | "verify-full"
+
+function resolveDatabaseSslMode(): DatabaseSslMode {
+  const urlSslMode = new URL(databaseUrl).searchParams.get("sslmode")
+  const configuredMode = (
+    process.env.DATABASE_SSL_MODE ?? urlSslMode
+  )?.toLowerCase()
+
+  if (!configuredMode) {
+    return isLocalConnection ? false : "require"
+  }
+
+  if (configuredMode === "disable" || configuredMode === "false") {
+    return false
+  }
+
+  if (configuredMode === "true") {
+    return "require"
+  }
+
+  if (
+    configuredMode === "allow" ||
+    configuredMode === "prefer" ||
+    configuredMode === "require" ||
+    configuredMode === "verify-full"
+  ) {
+    return configuredMode
+  }
+
+  throw new Error(
+    "DATABASE_SSL_MODE must be one of: disable, allow, prefer, require, or verify-full."
+  )
+}
+
+const databaseSslMode = resolveDatabaseSslMode()
+
 const schema = {
   ...authSchema,
   ...preferencesSchema,
@@ -32,7 +68,7 @@ declare global {
 
 function createClient() {
   return postgres(databaseUrl, {
-    ssl: isLocalConnection ? false : "require",
+    ssl: databaseSslMode,
     max: process.env.NODE_ENV === "development" ? 5 : 10,
     idle_timeout: 30,
     connect_timeout: 10,
