@@ -27,7 +27,16 @@ WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 
-ENV NEXT_TELEMETRY_DISABLED=1
+# Next.js imports server modules while collecting route metadata. These
+# non-secret placeholders satisfy eager client validation without connecting to
+# either service; the runner receives the real values only at container startup.
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
+    CLOUDFLARE_R2_ACCESS_KEY_ID="build-only-placeholder" \
+    CLOUDFLARE_R2_SECRET_ACCESS_KEY="build-only-placeholder" \
+    CLOUDFLARE_R2_BUCKET_NAME="build-only-placeholder" \
+    CLOUDFLARE_R2_REGION="auto" \
+    CLOUDFLARE_R2_ENDPOINT="https://r2.invalid"
 
 RUN pnpm build
 
