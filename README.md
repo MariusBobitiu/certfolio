@@ -171,7 +171,7 @@ Build the production image:
 
 ```bash
 docker build \
-  --build-arg NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY" \
+  --build-arg NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="<same value configured at runtime>" \
   -t certfolio .
 ```
 

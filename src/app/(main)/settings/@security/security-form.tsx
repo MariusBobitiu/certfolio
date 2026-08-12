@@ -251,7 +251,9 @@ function MfaCard({
   const mfaEnabled = emailEnabled || totpEnabled
 
   const getSensitivePayload = () =>
-    mfaPassword.trim() ? { password: mfaPassword.trim() } : { password: undefined }
+    mfaPassword.trim()
+      ? { password: mfaPassword.trim() }
+      : { password: undefined }
 
   const handleSensitiveFailure = (res: {
     data?: {
@@ -261,7 +263,9 @@ function MfaCard({
   }) => {
     if (res.data?.requiresPasswordConfirmation) {
       setMfaPasswordRequired(true)
-      setMfaPasswordError(res.data.failure ?? "Confirm your password to continue.")
+      setMfaPasswordError(
+        res.data.failure ?? "Confirm your password to continue."
+      )
       return true
     }
 
@@ -651,7 +655,9 @@ function MfaCard({
                     />
                   </Field>
                   {mfaPasswordError ? (
-                    <p className="text-sm text-destructive">{mfaPasswordError}</p>
+                    <p className="text-sm text-destructive">
+                      {mfaPasswordError}
+                    </p>
                   ) : null}
                 </div>
               ) : null}
@@ -705,7 +711,9 @@ function MfaCard({
                           type="password"
                           autoComplete="current-password"
                           value={mfaPassword}
-                          onChange={(event) => setMfaPassword(event.target.value)}
+                          onChange={(event) =>
+                            setMfaPassword(event.target.value)
+                          }
                         />
                       </Field>
                       {mfaPasswordError ? (
@@ -778,7 +786,10 @@ function MfaCard({
                       </div>
 
                       <DialogFooter className="sm:justify-start">
-                        <Button type="button" onClick={handleFinishRecoveryCodes}>
+                        <Button
+                          type="button"
+                          onClick={handleFinishRecoveryCodes}
+                        >
                           Done
                         </Button>
                       </DialogFooter>
@@ -1126,7 +1137,9 @@ function RecoveryCodesCard({
             </Button>
           </div>
         </TooltipTrigger>
-        <TooltipContent>Available once authenticator MFA is enabled.</TooltipContent>
+        <TooltipContent>
+          Available once authenticator MFA is enabled.
+        </TooltipContent>
       </Tooltip>
     )
   }
@@ -1368,9 +1381,7 @@ function TrustedDevicesCard({
       </div>
 
       {trustedDevices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No remembered devices.
-        </p>
+        <p className="text-sm text-muted-foreground">No remembered devices.</p>
       ) : (
         <div className="space-y-2">
           {trustedDevices.map((device) => (
