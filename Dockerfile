@@ -24,6 +24,8 @@ FROM base AS builder
 
 WORKDIR /app
 
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 
@@ -33,6 +35,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # command-scoped, non-secret placeholders satisfy eager client validation
 # without connecting to either service or persisting in the image environment.
 RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
+    NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}" \
     CLOUDFLARE_R2_ACCESS_KEY_ID="build-only-placeholder" \
     CLOUDFLARE_R2_SECRET_ACCESS_KEY="build-only-placeholder" \
     CLOUDFLARE_R2_BUCKET_NAME="build-only-placeholder" \

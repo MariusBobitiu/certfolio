@@ -116,6 +116,10 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/certfolio
 # Generate with: openssl rand -base64 32
 MFA_TOTP_ENCRYPTION_KEY=replace-with-a-base64-encoded-32-byte-key
 
+# Generate separately with: openssl rand -base64 32
+# Keep this stable across builds and all running app instances.
+NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=replace-with-a-base64-encoded-32-byte-key
+
 # Transactional email
 RESEND_API_KEY=re_replace_me
 RESEND_EMAIL_FROM_DOMAIN=example.com
@@ -166,8 +170,17 @@ is available at [http://localhost:3000/u/admin](http://localhost:3000/u/admin).
 Build the production image:
 
 ```bash
-docker build -t certfolio .
+docker build \
+  --build-arg NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY" \
+  -t certfolio .
 ```
+
+`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` must be supplied to the Docker build as
+well as to the running container. Next.js embeds it in the build output so
+Server Action identifiers remain consistent across builds and replicas. In a
+deployment platform, configure the same value as both a build argument and a
+runtime environment variable. Generate it once with `openssl rand -base64 32`;
+changing it invalidates Server Actions referenced by already-open pages.
 
 Run it with the same environment configuration used for local development:
 

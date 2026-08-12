@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { useAction } from "next-safe-action/hooks"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
+import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import QRCode from "qrcode"
@@ -40,6 +41,11 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Spinner } from "@/components/ui/spinner"
 import { formatDate, parseUserAgent } from "@/lib/utils"
@@ -231,7 +237,7 @@ function MfaCard({
   const confirmTotpEnrollment = useAction(confirmTotpEnrollmentAction)
   const disableTotpMfa = useAction(disableTotpMfaAction)
   const {
-    register: registerTotpCode,
+    control: totpCodeControl,
     handleSubmit: handleTotpSubmit,
     setError: setTotpError,
     clearErrors: clearTotpErrors,
@@ -382,32 +388,57 @@ function MfaCard({
     clearTotpErrors()
     setMfaPasswordError(null)
 
-    const res = await confirmTotpEnrollment.executeAsync({
-      ...values,
-      ...getSensitivePayload(),
-    })
+    try {
+      const res = await confirmTotpEnrollment.executeAsync({
+        ...values,
+        ...getSensitivePayload(),
+      })
 
-    if (res?.data && "requiresPasswordConfirmation" in res.data) {
-      setMfaPasswordRequired(true)
-      setMfaPasswordError(res.data.failure ?? "Confirm your password to continue.")
-      return
+      if (res?.data && "requiresPasswordConfirmation" in res.data) {
+        setMfaPasswordRequired(true)
+        setMfaPasswordError(
+          res.data.failure ?? "Confirm your password to continue."
+        )
+        return
+      }
+
+      if (res?.data?.failure) {
+        setTotpError("root", { message: res.data.failure })
+        return
+      }
+
+      const validationErrors = res?.validationErrors as
+        | { code?: { _errors?: string[] } }
+        | undefined
+      const codeError = validationErrors?.code?._errors?.[0]
+
+      if (codeError) {
+        setTotpError("code", { message: codeError })
+        return
+      }
+
+      if (res?.serverError) {
+        setTotpError("root", {
+          message: "We could not verify your code right now. Please try again.",
+        })
+        return
+      }
+
+      if (res?.data?.success) {
+        toast.success(res.data.success)
+        clearSensitivePasswordPrompt()
+        setNewRecoveryCodes(res.data.recoveryCodes ?? [])
+        setTotpStep("recovery")
+        resetTotpForm()
+        return
+      }
+
+      setTotpError("root", { message: "Unable to verify authenticator code" })
+    } catch {
+      setTotpError("root", {
+        message: "We could not verify your code right now. Please try again.",
+      })
     }
-
-    if (res?.data?.failure) {
-      setTotpError("root", { message: res.data.failure })
-      return
-    }
-
-    if (res?.data?.success) {
-      toast.success(res.data.success)
-      clearSensitivePasswordPrompt()
-      setNewRecoveryCodes(res.data.recoveryCodes ?? [])
-      setTotpStep("recovery")
-      resetTotpForm()
-      return
-    }
-
-    setTotpError("root", { message: "Unable to verify authenticator code" })
   }
 
   const handleDisableTotp = async () => {
@@ -847,14 +878,34 @@ function MfaCard({
                               <FieldLabel htmlFor="totpCode">
                                 Authenticator code
                               </FieldLabel>
-                              <Input
-                                id="totpCode"
-                                inputMode="numeric"
-                                autoComplete="one-time-code"
-                                maxLength={6}
-                                placeholder="123456"
-                                disabled={confirmTotpEnrollment.isPending}
-                                {...registerTotpCode("code")}
+                              <Controller
+                                name="code"
+                                control={totpCodeControl}
+                                render={({ field }) => (
+                                  <InputOTP
+                                    id="totpCode"
+                                    maxLength={6}
+                                    pattern={REGEXP_ONLY_DIGITS}
+                                    disabled={confirmTotpEnrollment.isPending}
+                                    value={field.value ?? ""}
+                                    onBlur={field.onBlur}
+                                    onChange={field.onChange}
+                                    pasteTransformer={(value) =>
+                                      value.replace(/\D/g, "")
+                                    }
+                                    aria-invalid={Boolean(totpErrors.code)}
+                                  >
+                                    <InputOTPGroup>
+                                      {Array.from({ length: 6 }, (_, index) => (
+                                        <InputOTPSlot
+                                          key={index}
+                                          index={index}
+                                          className="size-11 font-mono text-base"
+                                        />
+                                      ))}
+                                    </InputOTPGroup>
+                                  </InputOTP>
+                                )}
                               />
                               <FieldError errors={[totpErrors.code]} />
                             </Field>
