@@ -171,16 +171,23 @@ Build the production image:
 
 ```bash
 docker build \
-  --build-arg NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="<same value configured at runtime>" \
+  --secret id=NEXT_SERVER_ACTIONS_ENCRYPTION_KEY,env=NEXT_SERVER_ACTIONS_ENCRYPTION_KEY \
   -t certfolio .
 ```
 
 `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` must be supplied to the Docker build as
 well as to the running container. Next.js embeds it in the build output so
 Server Action identifiers remain consistent across builds and replicas. In a
-deployment platform, configure the same value as both a build argument and a
-runtime environment variable. Generate it once with `openssl rand -base64 32`;
-changing it invalidates Server Actions referenced by already-open pages.
+deployment platform, configure the same value as both a build-time secret and
+a runtime environment variable. Generate it once with `openssl rand -base64
+32`; changing it invalidates Server Actions referenced by already-open pages.
+
+For a Dokploy Dockerfile deployment, add
+`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=<your stable key>` in both **Environment
+Variables** and **Build-time Secrets**. Do not put it in **Build Time
+Arguments**. The image also derives a deployment identifier from the source so
+Next.js can detect version skew during a rolling deployment and reload stale
+clients onto the current Server Action manifest.
 
 Run it with the same environment configuration used for local development:
 
