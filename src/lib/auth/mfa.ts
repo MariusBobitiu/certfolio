@@ -405,18 +405,45 @@ function findValidTotpCounter(params: {
         params.lastUsedCounter !== null &&
         counter <= params.lastUsedCounter
       ) {
-        return { status: "reused" as const }
+        return {
+          status: "reused" as const,
+          matchedCounter: counter,
+          serverCounter: nowCounter,
+        }
       }
 
       if (Math.abs(offset) > MFA_CONFIG.TOTP.WINDOW) {
-        return { status: "clock_skew" as const }
+        return {
+          status: "clock_skew" as const,
+          counterOffset: offset,
+          matchedCounter: counter,
+          serverCounter: nowCounter,
+        }
       }
 
-      return { status: "valid" as const, counter }
+      return { status: "valid" as const, counter, serverCounter: nowCounter }
     }
   }
 
-  return { status: "invalid" as const }
+  return { status: "invalid" as const, serverCounter: nowCounter }
+}
+
+function getTotpFailureMessage(
+  match: ReturnType<typeof findValidTotpCounter>,
+  periodSeconds: number
+) {
+  if (match.status === "clock_skew") {
+    const offsetSeconds = Math.abs(match.counterOffset * periodSeconds)
+    const direction = match.counterOffset > 0 ? "ahead of" : "behind"
+
+    return `This code corresponds to a time about ${offsetSeconds} seconds ${direction} the server.`
+  }
+
+  if (match.status === "reused") {
+    return "This authenticator code was already used. Wait for a new one."
+  }
+
+  return "The authenticator code is incorrect."
 }
 
 function buildTotpChallengeMetadata(
@@ -754,12 +781,7 @@ export async function confirmTotpEnrollment(params: {
     if (totpMatch.status !== "valid") {
       return {
         success: false as const,
-        failure:
-          totpMatch.status === "clock_skew"
-            ? "Your authenticator or server clock is out of sync. Sync both clocks and try again."
-            : totpMatch.status === "reused"
-              ? "This authenticator code was already used. Wait for a new one."
-              : "The authenticator code is incorrect.",
+        failure: getTotpFailureMessage(totpMatch, method.period_seconds),
       }
     }
 
@@ -1309,6 +1331,12 @@ export async function verifyTotpMfaChallenge(params: {
     })
 
     if (totpMatch.status !== "valid") {
+      const previousDiagnostics = Array.isArray(
+        challenge.metadata?.totpFailureDiagnostics
+      )
+        ? challenge.metadata.totpFailureDiagnostics.slice(-2)
+        : []
+
       await tx
         .update(VerificationsTable)
         .set({
@@ -1318,6 +1346,18 @@ export async function verifyTotpMfaChallenge(params: {
             ...(challenge.metadata ?? {}),
             lastTotpFailure: totpMatch.status,
             lastTotpFailureAt: now.toISOString(),
+            totpFailureDiagnostics: [
+              ...previousDiagnostics,
+              {
+                status: totpMatch.status,
+                serverTime: now.toISOString(),
+                serverCounter: totpMatch.serverCounter,
+                counterOffset:
+                  totpMatch.status === "clock_skew"
+                    ? totpMatch.counterOffset
+                    : null,
+              },
+            ],
           },
         })
         .where(eq(VerificationsTable.id, challenge.id))
@@ -1327,11 +1367,7 @@ export async function verifyTotpMfaChallenge(params: {
         failure:
           nextAttempts >= MFA_CONFIG.TOTP.MAX_ATTEMPTS
             ? "Too many incorrect attempts. Sign in again."
-            : totpMatch.status === "clock_skew"
-              ? "Your authenticator or server clock is out of sync. Sync both clocks and try again."
-              : totpMatch.status === "reused"
-                ? "This authenticator code was already used. Wait for a new one."
-                : "The authenticator code is incorrect.",
+            : getTotpFailureMessage(totpMatch, method.period_seconds),
       }
     }
 
