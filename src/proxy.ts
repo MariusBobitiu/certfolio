@@ -4,21 +4,30 @@ import {
   validateSessionToken,
 } from "@/lib/auth/session-core"
 
-function redirectToSignIn(req: NextRequest) {
-  return NextResponse.redirect(new URL("/sign-in", req.url))
+function getSignInLocation() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL
+
+  return appUrl ? new URL("/sign-in", appUrl).toString() : "/sign-in"
+}
+
+function redirectToSignIn() {
+  return new NextResponse(null, {
+    status: 307,
+    headers: { Location: getSignInLocation() },
+  })
 }
 
 export async function proxy(req: NextRequest) {
   const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)
 
   if (!sessionCookie?.value) {
-    return redirectToSignIn(req)
+    return redirectToSignIn()
   }
 
   const session = await validateSessionToken(sessionCookie.value)
 
   if (!session) {
-    return redirectToSignIn(req)
+    return redirectToSignIn()
   }
 
   return NextResponse.next()
