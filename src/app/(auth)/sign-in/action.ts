@@ -111,6 +111,7 @@ export const signInAction = actionClient
     if (primaryMfaMethod?.method === "totp" && !trustedDeviceValid) {
       const challenge = await issueTotpMfaChallenge({
         userId: user.id,
+        email: user.email,
         rememberMe,
         ipAddress,
         city,

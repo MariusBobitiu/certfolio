@@ -65,6 +65,7 @@ type IssueEmailMfaChallengeParams = {
 
 type IssueTotpMfaChallengeParams = {
   userId: string
+  email: string
   rememberMe: boolean
   ipAddress?: string | null
   city?: string | null
@@ -1128,6 +1129,7 @@ export async function issueTotpMfaChallenge(
     await db
       .update(VerificationsTable)
       .set({
+        target: params.email,
         expires_at: expiresAt,
         attempts: 0,
         last_sent_at: now,
@@ -1144,6 +1146,7 @@ export async function issueTotpMfaChallenge(
       user_id: params.userId,
       purpose: "mfa_challenge",
       method: "totp",
+      target: params.email,
       expires_at: expiresAt,
       last_sent_at: now,
       metadata,

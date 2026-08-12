@@ -198,51 +198,81 @@ export async function sendEmailVerification(
 
 export async function verifyEmailToken(token: string) {
   const tokenHash = hashVerificationToken(token)
+  const now = new Date()
 
-  const [verification] = await db
-    .select()
-    .from(VerificationsTable)
-    .where(
-      and(
-        eq(VerificationsTable.purpose, "email_verification"),
-        eq(VerificationsTable.method, "email"),
-        eq(VerificationsTable.token_hash, tokenHash),
-        isNull(VerificationsTable.consumed_at),
-        gt(VerificationsTable.expires_at, new Date())
+  return db.transaction(async (tx) => {
+    const [verification] = await tx
+      .select()
+      .from(VerificationsTable)
+      .where(
+        and(
+          eq(VerificationsTable.purpose, "email_verification"),
+          eq(VerificationsTable.method, "email"),
+          eq(VerificationsTable.token_hash, tokenHash)
+        )
       )
-    )
-    .limit(1)
+      .limit(1)
 
-  if (!verification) {
-    return { success: false as const }
-  }
+    if (!verification) {
+      return { success: false as const }
+    }
 
-  await db.transaction(async (tx) => {
+    if (verification.consumed_at) {
+      const [user] = await tx
+        .select({ email_verified_at: UsersTable.email_verified_at })
+        .from(UsersTable)
+        .where(eq(UsersTable.id, verification.user_id))
+        .limit(1)
+
+      return user?.email_verified_at
+        ? { success: true as const, userId: verification.user_id }
+        : { success: false as const }
+    }
+
+    const [consumedVerification] = await tx
+      .update(VerificationsTable)
+      .set({ consumed_at: now })
+      .where(
+        and(
+          eq(VerificationsTable.id, verification.id),
+          isNull(VerificationsTable.consumed_at),
+          gt(VerificationsTable.expires_at, now)
+        )
+      )
+      .returning({ id: VerificationsTable.id })
+
+    if (!consumedVerification) {
+      const [user] = await tx
+        .select({ email_verified_at: UsersTable.email_verified_at })
+        .from(UsersTable)
+        .where(eq(UsersTable.id, verification.user_id))
+        .limit(1)
+
+      return user?.email_verified_at
+        ? { success: true as const, userId: verification.user_id }
+        : { success: false as const }
+    }
+
     await tx
       .update(UsersTable)
-      .set({ email_verified_at: new Date() })
+      .set({ email_verified_at: now })
       .where(eq(UsersTable.id, verification.user_id))
-
-    await tx
-      .update(VerificationsTable)
-      .set({ consumed_at: new Date() })
-      .where(eq(VerificationsTable.id, verification.id))
 
     await tx.insert(VerificationsTable).values({
       user_id: verification.user_id,
       purpose: "email_verification",
       method: "email",
       target: verification.target,
-      expires_at: new Date(),
-      consumed_at: new Date(),
+      expires_at: now,
+      consumed_at: now,
       metadata: { event: "verified" },
     })
-  })
 
-  return {
-    success: true as const,
-    userId: verification.user_id,
-  }
+    return {
+      success: true as const,
+      userId: verification.user_id,
+    }
+  })
 }
 
 export async function logEmailVerificationSentEvent(
