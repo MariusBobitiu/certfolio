@@ -12,6 +12,7 @@ export const MFA_CONFIG = {
     DIGITS: 6,
     ALGORITHM: "SHA1",
     WINDOW: 1,
+    CLOCK_SKEW_DIAGNOSTIC_WINDOW: 20,
     ENCRYPTION_VERSION: 1,
     ENCRYPTION_ALGORITHM: "aes-256-gcm",
     ISSUER: "Certfolio",

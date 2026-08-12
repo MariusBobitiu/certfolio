@@ -381,18 +381,15 @@ function findValidTotpCounter(params: {
   periodSeconds: number
 }) {
   const nowCounter = getTotpCounterForTime(Date.now(), params.periodSeconds)
+  const diagnosticWindow = Math.max(
+    MFA_CONFIG.TOTP.WINDOW,
+    MFA_CONFIG.TOTP.CLOCK_SKEW_DIAGNOSTIC_WINDOW
+  )
 
-  for (let offset = -MFA_CONFIG.TOTP.WINDOW; offset <= MFA_CONFIG.TOTP.WINDOW; offset += 1) {
+  for (let offset = -diagnosticWindow; offset <= diagnosticWindow; offset += 1) {
     const counter = nowCounter + offset
 
     if (counter < 0) {
-      continue
-    }
-
-    if (
-      params.lastUsedCounter !== null &&
-      counter <= params.lastUsedCounter
-    ) {
       continue
     }
 
@@ -404,11 +401,22 @@ function findValidTotpCounter(params: {
     })
 
     if (codesEqual(expectedCode, params.code)) {
-      return counter
+      if (
+        params.lastUsedCounter !== null &&
+        counter <= params.lastUsedCounter
+      ) {
+        return { status: "reused" as const }
+      }
+
+      if (Math.abs(offset) > MFA_CONFIG.TOTP.WINDOW) {
+        return { status: "clock_skew" as const }
+      }
+
+      return { status: "valid" as const, counter }
     }
   }
 
-  return null
+  return { status: "invalid" as const }
 }
 
 function buildTotpChallengeMetadata(
@@ -734,7 +742,7 @@ export async function confirmTotpEnrollment(params: {
       authTag: method.secret_auth_tag,
     })
 
-    const matchedCounter = findValidTotpCounter({
+    const totpMatch = findValidTotpCounter({
       code: params.code,
       secret,
       lastUsedCounter: method.last_used_counter,
@@ -743,12 +751,19 @@ export async function confirmTotpEnrollment(params: {
       periodSeconds: method.period_seconds,
     })
 
-    if (matchedCounter === null) {
+    if (totpMatch.status !== "valid") {
       return {
         success: false as const,
-        failure: "The code you entered is incorrect or already used.",
+        failure:
+          totpMatch.status === "clock_skew"
+            ? "Your authenticator or server clock is out of sync. Sync both clocks and try again."
+            : totpMatch.status === "reused"
+              ? "This authenticator code was already used. Wait for a new one."
+              : "The authenticator code is incorrect.",
       }
     }
+
+    const matchedCounter = totpMatch.counter
 
     await tx
       .update(UserMfaMethodsTable)
@@ -1284,7 +1299,7 @@ export async function verifyTotpMfaChallenge(params: {
       authTag: method.secret_auth_tag,
     })
     const nextAttempts = challenge.attempts + 1
-    const matchedCounter = findValidTotpCounter({
+    const totpMatch = findValidTotpCounter({
       code: params.code,
       secret,
       lastUsedCounter: method.last_used_counter,
@@ -1293,12 +1308,17 @@ export async function verifyTotpMfaChallenge(params: {
       periodSeconds: method.period_seconds,
     })
 
-    if (matchedCounter === null) {
+    if (totpMatch.status !== "valid") {
       await tx
         .update(VerificationsTable)
         .set({
           attempts: nextAttempts,
           consumed_at: nextAttempts >= MFA_CONFIG.TOTP.MAX_ATTEMPTS ? now : null,
+          metadata: {
+            ...(challenge.metadata ?? {}),
+            lastTotpFailure: totpMatch.status,
+            lastTotpFailureAt: now.toISOString(),
+          },
         })
         .where(eq(VerificationsTable.id, challenge.id))
 
@@ -1307,9 +1327,15 @@ export async function verifyTotpMfaChallenge(params: {
         failure:
           nextAttempts >= MFA_CONFIG.TOTP.MAX_ATTEMPTS
             ? "Too many incorrect attempts. Sign in again."
-            : "The code you entered is incorrect or already used.",
+            : totpMatch.status === "clock_skew"
+              ? "Your authenticator or server clock is out of sync. Sync both clocks and try again."
+              : totpMatch.status === "reused"
+                ? "This authenticator code was already used. Wait for a new one."
+                : "The authenticator code is incorrect.",
       }
     }
+
+    const matchedCounter = totpMatch.counter
 
     const updatedMethods = await tx
       .update(UserMfaMethodsTable)
