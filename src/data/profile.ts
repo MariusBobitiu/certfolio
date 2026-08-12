@@ -24,6 +24,7 @@ export type PublicCredential = {
   issuer: {
     display_name: string
     theme_key: string
+    logo_url: string
   }
 }
 
@@ -160,6 +161,7 @@ export async function getPublicProfileData(
         verification_url: CredentialsTable.verification_url,
         issuer_display_name: IssuersTable.display_name,
         issuer_theme_key: IssuersTable.theme_key,
+        issuer_logo_url: IssuersTable.logo_url,
       })
       .from(CredentialsTable)
       .innerJoin(IssuersTable, eq(CredentialsTable.issuer_id, IssuersTable.id))
@@ -193,6 +195,7 @@ export async function getPublicProfileData(
     issuer: {
       display_name: c.issuer_display_name,
       theme_key: c.issuer_theme_key,
+      logo_url: c.issuer_logo_url,
     },
   }))
 

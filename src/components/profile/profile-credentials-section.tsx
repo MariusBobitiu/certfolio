@@ -37,7 +37,7 @@ export function ProfileCredentialsSection({
   return (
     <section className="space-y-5">
       <ProfileSectionHeader
-        label="Verified credentials"
+        label="Credentials"
         subtitle={buildCredentialSubtitle(credentials)}
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -46,6 +46,7 @@ export function ProfileCredentialsSection({
             key={credential.id}
             issuerDisplayName={credential.issuer.display_name}
             issuerThemeKey={credential.issuer.theme_key}
+            issuerLogoUrl={credential.issuer.logo_url}
             title={credential.title}
             issuedOn={credential.issued_on.toISOString()}
             verificationStatus={credential.verification_status}

@@ -415,6 +415,7 @@ export function CredentialsWorkspace({
                     <CredentialCardPreview
                       issuerDisplayName={credential.issuer.displayName}
                       issuerThemeKey={credential.issuer.themeKey}
+                      issuerLogoUrl={credential.issuer.logoUrl}
                       title={credential.title}
                       issuedOn={credential.issuedOn}
                       verificationStatus={credential.verificationStatus}

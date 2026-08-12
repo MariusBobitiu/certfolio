@@ -59,12 +59,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   }
 
   const { user, preferences, links, skills, credentials, projects } = data
-  const verifiedCredentials = credentials.filter(
-    (credential) => credential.verification_status !== "self_declared"
-  )
   const accentColour = preferences.accent_colour ?? "#3b82f6"
   const hasContent =
-    verifiedCredentials.length > 0 || skills.length > 0 || projects.length > 0
+    credentials.length > 0 || skills.length > 0 || projects.length > 0
   const evidenceCount = projects.reduce(
     (total, project) => total + project.evidence.length,
     0
@@ -72,7 +69,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
   const tagline = preferences.headline?.trim() || undefined
 
-  const verifiedCount = verifiedCredentials.filter(
+  const verifiedCount = credentials.filter(
     (c) => c.verification_status === "verified_external"
   ).length
   const trustLineParts: string[] = []
@@ -80,9 +77,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     trustLineParts.push(
       `${verifiedCount} independently verified credential${verifiedCount === 1 ? "" : "s"}`
     )
-  } else if (verifiedCredentials.length > 0) {
+  } else if (credentials.length > 0) {
     trustLineParts.push(
-      `${verifiedCredentials.length} credential${verifiedCredentials.length === 1 ? "" : "s"}`
+      `${credentials.length} credential${credentials.length === 1 ? "" : "s"}`
     )
   }
   if (projects.length > 0) {
@@ -167,7 +164,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   tagline={tagline}
                   trustLine={trustLine}
                   verifiedCount={verifiedCount}
-                  credentialCount={verifiedCredentials.length}
+                  credentialCount={credentials.length}
                   projectCount={projects.length}
                   evidenceCount={evidenceCount}
                 />
@@ -176,7 +173,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
             <ProfileAboutSection bio={preferences.bio} />
 
-            <ProfileCredentialsSection credentials={verifiedCredentials} />
+            <ProfileCredentialsSection credentials={credentials} />
 
             <ProfileSkillsSection skills={skills} />
 

@@ -768,6 +768,7 @@ export function CredentialDetailForm({
               className="mt-4"
               issuerDisplayName={formState.issuerQuery || "Custom issuer"}
               issuerThemeKey={formState.issuer.themeKey}
+              issuerLogoUrl={formState.issuer.logoUrl}
               title={formState.title || "Credential title"}
               issuedOn={
                 formState.issuedYear && formState.issuedMonth

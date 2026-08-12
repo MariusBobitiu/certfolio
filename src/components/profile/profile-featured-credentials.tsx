@@ -78,6 +78,7 @@ export function ProfileFeaturedCredentials({
                 <CredentialCardPreview
                   issuerDisplayName={cred.issuer_display_name}
                   issuerThemeKey={cred.issuer_theme_key}
+                  issuerLogoUrl={cred.issuer_logo_url}
                   title={cred.title}
                   verificationStatus={cred.verification_status}
                   issuedOn={cred.issued_on.toISOString()}

@@ -18,6 +18,7 @@ function formatIssuedOn(date: string) {
 export function CredentialCardPreview({
   issuerDisplayName,
   issuerThemeKey,
+  issuerLogoUrl,
   title,
   issuedOn,
   verificationStatus,
@@ -25,6 +26,7 @@ export function CredentialCardPreview({
 }: {
   issuerDisplayName: string
   issuerThemeKey: string
+  issuerLogoUrl?: string
   title: string
   issuedOn: string
   verificationStatus: "verified_external" | "linked_external" | "self_declared"
@@ -60,7 +62,17 @@ export function CredentialCardPreview({
                 effectiveTheme.logoClassName
               )}
             >
-              {getIssuerInitials(issuerDisplayName)}
+              {issuerLogoUrl ? (
+                // Issuer logos can come from arbitrary provider domains.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={issuerLogoUrl}
+                  alt=""
+                  className="size-full rounded-[inherit] object-contain p-2"
+                />
+              ) : (
+                getIssuerInitials(issuerDisplayName)
+              )}
             </div>
 
             <div className="flex-1 space-y-2">

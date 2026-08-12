@@ -24,6 +24,7 @@ export type PublishedCredentialForPicker = {
   title: string
   issuer_display_name: string
   issuer_theme_key: string
+  issuer_logo_url: string
   verification_status: "verified_external" | "linked_external" | "self_declared"
   issued_on: Date
 }
@@ -118,6 +119,7 @@ export async function getProfileManagementData(
       title: CredentialsTable.title,
       issuer_display_name: IssuersTable.display_name,
       issuer_theme_key: IssuersTable.theme_key,
+      issuer_logo_url: IssuersTable.logo_url,
       verification_status: CredentialsTable.verification_status,
       issued_on: CredentialsTable.issued_on,
     })
