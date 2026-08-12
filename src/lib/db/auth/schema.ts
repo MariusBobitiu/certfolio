@@ -211,6 +211,10 @@ export const userMfaMethodsTable = pgTable(
     index("user_mfa_methods_user_id_idx").on(methods.user_id),
     index("user_mfa_methods_method_idx").on(methods.method),
     index("user_mfa_methods_enabled_at_idx").on(methods.enabled_at),
+    uniqueIndex("user_mfa_methods_user_id_method_unique_idx").on(
+      methods.user_id,
+      methods.method
+    ),
   ]
 )
 

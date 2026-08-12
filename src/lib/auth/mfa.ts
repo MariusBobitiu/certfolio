@@ -661,41 +661,35 @@ export async function beginTotpEnrollment(params: {
     `&digits=${MFA_CONFIG.TOTP.DIGITS}` +
     `&period=${MFA_CONFIG.TOTP.PERIOD_SECONDS}`
 
-  if (existing) {
-    await db
-      .update(UserMfaMethodsTable)
-      .set({
-        label: "Authenticator app",
-        secret_ciphertext: encryptedSecret.ciphertext,
-        secret_iv: encryptedSecret.iv,
-        secret_auth_tag: encryptedSecret.authTag,
-        secret_version: encryptedSecret.version,
-        algorithm: MFA_CONFIG.TOTP.ALGORITHM,
-        digits: MFA_CONFIG.TOTP.DIGITS,
-        period_seconds: MFA_CONFIG.TOTP.PERIOD_SECONDS,
-        enabled_at: null,
-        verified_at: null,
-        last_used_at: null,
-        last_used_counter: null,
-        disabled_at: null,
-        updated_at: now,
-      })
-      .where(eq(UserMfaMethodsTable.id, existing.id))
-  } else {
-    await db.insert(UserMfaMethodsTable).values({
+  const enrollment = {
+    label: "Authenticator app",
+    secret_ciphertext: encryptedSecret.ciphertext,
+    secret_iv: encryptedSecret.iv,
+    secret_auth_tag: encryptedSecret.authTag,
+    secret_version: encryptedSecret.version,
+    algorithm: MFA_CONFIG.TOTP.ALGORITHM,
+    digits: MFA_CONFIG.TOTP.DIGITS,
+    period_seconds: MFA_CONFIG.TOTP.PERIOD_SECONDS,
+    enabled_at: null,
+    verified_at: null,
+    last_used_at: null,
+    last_used_counter: null,
+    disabled_at: null,
+    updated_at: now,
+  }
+
+  await db
+    .insert(UserMfaMethodsTable)
+    .values({
       user_id: params.userId,
       method: "totp",
-      label: "Authenticator app",
       is_primary: false,
-      secret_ciphertext: encryptedSecret.ciphertext,
-      secret_iv: encryptedSecret.iv,
-      secret_auth_tag: encryptedSecret.authTag,
-      secret_version: encryptedSecret.version,
-      algorithm: MFA_CONFIG.TOTP.ALGORITHM,
-      digits: MFA_CONFIG.TOTP.DIGITS,
-      period_seconds: MFA_CONFIG.TOTP.PERIOD_SECONDS,
+      ...enrollment,
     })
-  }
+    .onConflictDoUpdate({
+      target: [UserMfaMethodsTable.user_id, UserMfaMethodsTable.method],
+      set: enrollment,
+    })
 
   return {
     success: true as const,
