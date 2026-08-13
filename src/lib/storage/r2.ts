@@ -78,6 +78,17 @@ export async function getProjectAssetUrl(key: string) {
   )
 }
 
+export async function getProfileImageUrl(key: string) {
+  return getSignedUrl(
+    r2Client,
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    }),
+    { expiresIn: 60 * 60 }
+  )
+}
+
 export async function deleteProjectAsset(key: string) {
   await r2Client.send(
     new DeleteObjectCommand({
@@ -159,7 +170,7 @@ export async function uploadProfileImage({
     })
   )
 
-  const url = await getProjectAssetUrl(key)
+  const url = await getProfileImageUrl(key)
 
   return { key, url }
 }

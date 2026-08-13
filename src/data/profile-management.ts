@@ -13,7 +13,11 @@ import {
   UserPreferencesTable,
   UsersTable,
 } from "@/lib/db/drizzle"
-import { getProjectAssetUrl, uploadProfileImage } from "@/lib/storage/r2"
+import {
+  getProfileImageUrl,
+  getProjectAssetUrl,
+  uploadProfileImage,
+} from "@/lib/storage/r2"
 import { slugAvailabilitySchema } from "@/lib/validations/profile"
 import type { ProfileFormData } from "@/lib/validations/profile"
 
@@ -79,6 +83,7 @@ export async function getProfileManagementData(
       name: UsersTable.name,
       slug: UsersTable.slug,
       image: UsersTable.image,
+      image_key: UsersTable.image_key,
     })
     .from(UsersTable)
     .where(eq(UsersTable.id, userId))
@@ -185,12 +190,21 @@ export async function getProfileManagementData(
     })
   )
 
+  let profileImageUrl = user.image ?? ""
+  if (user.image_key) {
+    try {
+      profileImageUrl = await getProfileImageUrl(user.image_key)
+    } catch {
+      // Preserve external/default avatars and the existing URL as a fallback.
+    }
+  }
+
   return {
     user: {
       id: user.id,
       name: user.name,
       slug: user.slug ?? "",
-      image: user.image ?? "",
+      image: profileImageUrl,
     },
     preferences: {
       headline: prefs?.headline ?? "",
@@ -238,7 +252,11 @@ export async function saveProfile(
       name: data.name,
       slug: data.slug,
       ...(data.imageUrl
-        ? { image: data.imageUrl, updated_at: sql`now()` }
+        ? {
+            image: data.imageUrl,
+            image_key: data.imageKey ?? null,
+            updated_at: sql`now()`,
+          }
         : { updated_at: sql`now()` }),
     })
     .where(eq(UsersTable.id, userId))
@@ -292,7 +310,7 @@ export async function saveProfile(
 export async function uploadProfileImageAction(
   userId: string,
   file: File
-): Promise<{ imageUrl: string }> {
+): Promise<{ imageKey: string; imageUrl: string }> {
   const session = await getCurrentSession()
   if (!session || session.user.id !== userId) {
     throw new Error("Unauthorized")
@@ -300,9 +318,9 @@ export async function uploadProfileImageAction(
 
   // Old R2 objects are not deleted in v1; cleanup can be added later
 
-  const { url } = await uploadProfileImage({ userId, file })
+  const { key, url } = await uploadProfileImage({ userId, file })
 
-  return { imageUrl: url }
+  return { imageKey: key, imageUrl: url }
 }
 
 // ── Visibility toggle ────────────────────────────────────────────────────────

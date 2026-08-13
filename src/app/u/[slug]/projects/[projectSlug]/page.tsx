@@ -4,6 +4,8 @@ import { notFound } from "next/navigation"
 import { getPublicProjectData } from "@/data/profile"
 import { PublicProjectCaseStudyPage } from "@/components/profile/public-project-case-study"
 
+export const dynamic = "force-dynamic"
+
 type PublicProjectPageProps = {
   params: Promise<{ slug: string; projectSlug: string }>
 }

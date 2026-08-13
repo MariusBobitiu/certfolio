@@ -117,6 +117,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       db
         .select({
           image: UsersTable.image,
+          imageKey: UsersTable.image_key,
           slug: UsersTable.slug,
           headline: UserPreferencesTable.headline,
           bio: UserPreferencesTable.bio,
@@ -178,7 +179,10 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
   )
 
   const profileChecks = [
-    { label: "Profile photo", complete: Boolean(profile?.image) },
+    {
+      label: "Profile photo",
+      complete: Boolean(profile?.imageKey || profile?.image),
+    },
     {
       label: "Professional headline",
       complete: Boolean(profile?.headline?.trim()),

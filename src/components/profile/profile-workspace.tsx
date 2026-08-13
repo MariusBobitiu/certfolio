@@ -32,6 +32,7 @@ type ProfileWorkspaceProps = {
 export function ProfileWorkspace({ data }: ProfileWorkspaceProps) {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null)
   const [featuredCredIds, setFeaturedCredIds] = useState<string[]>(
     data.preferences.featured_credential_ids
   )
@@ -83,19 +84,25 @@ export function ProfileWorkspace({ data }: ProfileWorkspaceProps) {
       const formData = form.getValues()
 
       let imageUrl: string | null = null
+      let imageKey: string | null = null
       if (imageFile) {
         const result = await uploadProfileImageAction(data.user.id, imageFile)
         imageUrl = result.imageUrl
+        imageKey = result.imageKey
       }
 
       await saveProfile(data.user.id, {
         ...formData,
-        imageUrl: imageUrl ?? (data.user.image || null),
+        imageKey,
+        imageUrl,
         featuredCredentialIds: featuredCredIds,
         featuredProjectIds: featuredProjIds,
       })
 
       form.reset(formData)
+      if (imageUrl) {
+        setSavedImageUrl(imageUrl)
+      }
       setImageFile(null)
       setImagePreview(null)
       setCommittedCredIds(featuredCredIds)
@@ -108,17 +115,11 @@ export function ProfileWorkspace({ data }: ProfileWorkspaceProps) {
     } finally {
       setIsSaving(false)
     }
-  }, [
-    form,
-    imageFile,
-    featuredCredIds,
-    featuredProjIds,
-    data.user.id,
-    data.user.image,
-  ])
+  }, [form, imageFile, featuredCredIds, featuredProjIds, data.user.id])
 
   const watchedValues = form.watch()
-  const hasImage = !!(imagePreview || data.user.image)
+  const currentImageUrl = savedImageUrl ?? data.user.image
+  const hasImage = !!(imagePreview || currentImageUrl)
   const hasHeadline = !!watchedValues.headline?.trim()
   const hasBio = !!watchedValues.bio?.trim()
   const hasLinks = (watchedValues.links?.length ?? 0) > 0
@@ -128,7 +129,7 @@ export function ProfileWorkspace({ data }: ProfileWorkspaceProps) {
       <div className="mx-auto max-w-7xl space-y-8 pb-24 lg:pb-12">
         {/* Unified identity surface — includes visibility + accent */}
         <ProfileIdentitySurface
-          currentImageUrl={data.user.image || null}
+          currentImageUrl={currentImageUrl || null}
           previewUrl={imagePreview}
           onImageSelectAction={handleImageSelect}
           userId={data.user.id}

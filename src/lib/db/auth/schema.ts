@@ -35,6 +35,7 @@ export const usersTable = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     image: text("image").notNull(),
+    image_key: text("image_key"),
     password_hash: text("password_hash").notNull(),
     email_verified_at: timestamp("email_verified_at", {
       withTimezone: true,

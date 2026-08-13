@@ -11,6 +11,8 @@ import { ProfileHero } from "@/components/profile/profile-hero"
 import { ProfileProjectsSection } from "@/components/profile/profile-projects-section"
 import { ProfileSkillsSection } from "@/components/profile/profile-skills-section"
 
+export const dynamic = "force-dynamic"
+
 interface ProfilePageProps {
   params: Promise<{ slug: string }>
 }

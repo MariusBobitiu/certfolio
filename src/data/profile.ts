@@ -13,7 +13,7 @@ import {
   UserPreferencesTable,
   UsersTable,
 } from "@/lib/db/drizzle"
-import { getProjectAssetUrl } from "@/lib/storage/r2"
+import { getProfileImageUrl, getProjectAssetUrl } from "@/lib/storage/r2"
 
 export type PublicCredential = {
   id: string
@@ -102,6 +102,7 @@ export async function getPublicProfileData(
       name: UsersTable.name,
       email: UsersTable.email,
       image: UsersTable.image,
+      image_key: UsersTable.image_key,
       slug: UsersTable.slug,
     })
     .from(UsersTable)
@@ -109,6 +110,15 @@ export async function getPublicProfileData(
     .limit(1)
 
   if (!user || !user.slug) return null
+
+  let profileImageUrl = user.image
+  if (user.image_key) {
+    try {
+      profileImageUrl = await getProfileImageUrl(user.image_key)
+    } catch {
+      // Fall back to the persisted URL if signing is temporarily unavailable.
+    }
+  }
 
   const [prefs] = await db
     .select({
@@ -128,7 +138,7 @@ export async function getPublicProfileData(
   if (!prefs || !prefs.public_profile) {
     return {
       isPrivate: true,
-      user: { name: user.name, image: user.image, slug: user.slug },
+      user: { name: user.name, image: profileImageUrl, slug: user.slug },
     }
   }
 
@@ -305,7 +315,7 @@ export async function getPublicProfileData(
     isPrivate: false,
     user: {
       name: user.name,
-      image: user.image,
+      image: profileImageUrl,
       slug: user.slug,
       email: user.email,
     },
@@ -347,6 +357,7 @@ export async function getPublicProjectData({
       user_id: UsersTable.id,
       user_name: UsersTable.name,
       user_image: UsersTable.image,
+      user_image_key: UsersTable.image_key,
       user_slug: UsersTable.slug,
       public_profile: UserPreferencesTable.public_profile,
       accent_colour: UserPreferencesTable.accent_colour,
@@ -402,6 +413,15 @@ export async function getPublicProjectData({
     }
   }
 
+  let owner_image = row.user_image
+  if (row.user_image_key) {
+    try {
+      owner_image = await getProfileImageUrl(row.user_image_key)
+    } catch {
+      // Fall back to the persisted URL if signing is temporarily unavailable.
+    }
+  }
+
   return {
     id: row.project_id,
     slug: row.project_slug,
@@ -418,7 +438,7 @@ export async function getPublicProjectData({
     evidence: evidenceRows,
     owner: {
       name: row.user_name,
-      image: row.user_image,
+      image: owner_image,
       slug: row.user_slug,
     },
   }
